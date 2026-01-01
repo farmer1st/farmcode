@@ -33,10 +33,10 @@ class StateMachine:
 
         # For gate phases, check if approved
         if self.state.current_phase.is_gate():
-            return current_phase_state.approved
+            return current_phase_state.human_approved
 
         # For work phases, check if all agents are complete
-        return current_phase_state.all_agents_complete()
+        return self.state.all_agents_complete()
 
     def advance(self) -> bool:
         """Transition to the next phase.
@@ -96,8 +96,8 @@ class StateMachine:
         if current_phase_state is None:
             return False
 
-        # Mark as approved
-        current_phase_state.approved = True
+        # Mark as approved (use the state's approve_gate method)
+        self.state.approve_gate()
         return True
 
     def get_status_summary(self) -> dict:
@@ -118,10 +118,13 @@ class StateMachine:
         agents_status = []
         if not self.state.current_phase.is_gate():
             for agent in self.state.current_phase.get_active_agents():
+                # Check if agent is in active_agents dict and if completed
+                agent_completion = current_phase_state.active_agents.get(agent)
+                is_complete = agent_completion.completed if agent_completion else False
                 agents_status.append(
                     {
                         "handle": agent,
-                        "complete": agent in current_phase_state.agents_complete,
+                        "complete": is_complete,
                     }
                 )
 
@@ -130,5 +133,5 @@ class StateMachine:
             "is_gate": self.state.current_phase.is_gate(),
             "can_advance": self.can_advance(),
             "agents": agents_status,
-            "approved": current_phase_state.approved if self.state.current_phase.is_gate() else None,
+            "approved": current_phase_state.human_approved if self.state.current_phase.is_gate() else None,
         }

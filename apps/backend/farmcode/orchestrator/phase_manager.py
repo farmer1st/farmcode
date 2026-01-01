@@ -55,7 +55,7 @@ class PhaseManager:
             labels=["farmcode", WorkflowPhase.PHASE_1_SETUP.get_github_label()],
         )
 
-        issue_number = int(issue_context.issue_id)
+        issue_number = issue_context.issue_number
 
         # Create worktree
         worktree_info = self.worktree_manager.create_worktree(
@@ -76,8 +76,7 @@ class PhaseManager:
 
         # Start Phase 1 (marks as complete immediately since it's synchronous)
         state.start_phase(WorkflowPhase.PHASE_1_SETUP)
-        # Phase 1 has no agents, so mark as complete immediately
-        state.get_current_phase_state().approved = True
+        # Phase 1 has no agents, so it auto-completes (all_agents_complete returns True)
 
         # Post initial comment
         self.github_adapter.post_comment(

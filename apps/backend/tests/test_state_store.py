@@ -109,4 +109,6 @@ def test_state_persistence_preserves_phase_history(state_store, feature_state):
     assert loaded is not None
     assert len(loaded.phase_history) == 1
     assert loaded.phase_history[0].phase == WorkflowPhase.PHASE_2_SPECS
-    assert "duc" in loaded.phase_history[0].agents_complete
+    # Check that duc is in active_agents and marked as completed
+    assert "duc" in loaded.phase_history[0].active_agents
+    assert loaded.phase_history[0].active_agents["duc"].completed is True

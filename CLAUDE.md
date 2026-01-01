@@ -120,6 +120,7 @@ farmcode/
 - **Config**: PyYAML + Pydantic
 - **Testing**: pytest + pytest-asyncio + pytest-cov
 - **Linting**: ruff + mypy
+- **Package Manager**: uv (fast Rust-based package installer)
 - **Python**: 3.12+
 
 ### Frontend (Electron) - NOT YET IMPLEMENTED
@@ -239,7 +240,10 @@ Each agent has:
 ### Installation
 ```bash
 cd apps/backend
-pip install -e ".[dev]"
+
+# Create virtual environment and install dependencies with uv
+uv venv
+uv pip install -e ".[dev]"
 ```
 
 ### Configuration
@@ -269,30 +273,30 @@ farmcode run --interval 10
 ### Testing
 ```bash
 # Run all tests
-pytest
+uv run pytest
 
 # Run with coverage
-pytest --cov=farmcode --cov-report=html
+uv run pytest --cov=farmcode --cov-report=html
 
 # Run specific test type
-pytest tests/unit/
-pytest tests/integration/
-pytest tests/e2e/
+uv run pytest tests/unit/
+uv run pytest tests/integration/
+uv run pytest tests/e2e/
 
 # Run specific test
-pytest tests/e2e/test_mvp_integration.py::test_mvp_workflow_end_to_end -v
+uv run pytest tests/e2e/test_mvp_integration.py::test_mvp_workflow_end_to_end -v
 ```
 
 ### Linting
 ```bash
 # Check code
-ruff check farmcode
+uv run ruff check farmcode
 
 # Format code
-ruff format farmcode
+uv run ruff format farmcode
 
 # Type checking
-mypy farmcode
+uv run mypy farmcode
 ```
 
 ---
@@ -495,10 +499,10 @@ See [pyproject.toml](apps/backend/pyproject.toml)
 rm -rf .pytest_cache __pycache__
 
 # Reinstall in dev mode
-pip install -e ".[dev]"
+uv pip install -e ".[dev]"
 
 # Run with verbose output
-pytest -vv
+uv run pytest -vv
 ```
 
 ---

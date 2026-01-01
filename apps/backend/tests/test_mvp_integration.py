@@ -6,8 +6,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from farmcode.models.comment import Comment
-from farmcode.models.issue import IssueContext
+from farmcode.adapters.base import Comment, IssueContext
 from farmcode.models.phase import WorkflowPhase
 
 
@@ -42,13 +41,14 @@ async def test_mvp_workflow_end_to_end(orchestrator, mock_github_adapter, state_
     # === Step 3: Simulate @duc completion ===
     now = datetime.now()
     completion_comment = Comment(
+        id="1",
         author="viollet-le-duc[bot]",
         body="✅ **Task Complete** (@duc)\n\nSpecs written to .plans/123/specs/",
         created_at=now,
     )
 
     mock_github_adapter.get_issue_context.return_value = IssueContext(
-        issue_id="123",
+        issue_number=123,
         title="Add User Authentication",
         body="Implement JWT-based authentication",
         labels=["farmcode"],
@@ -74,13 +74,14 @@ async def test_mvp_workflow_end_to_end(orchestrator, mock_github_adapter, state_
 
     # === Step 4: Simulate human approval ===
     approval_comment = Comment(
+        id="2",
         author="human-reviewer",
         body="Looks good! approved",
         created_at=datetime.now(),
     )
 
     mock_github_adapter.get_issue_context.return_value = IssueContext(
-        issue_id="123",
+        issue_number=123,
         title="Add User Authentication",
         body="Implement JWT-based authentication",
         labels=["farmcode"],
@@ -95,10 +96,13 @@ async def test_mvp_workflow_end_to_end(orchestrator, mock_github_adapter, state_
     assert len(approval_updates) == 1
     assert approval_updates[0]["approver"] == "human-reviewer"
 
-    # Verify would advance to Phase 3 (not implemented yet)
+    # Verify Gate 1 was approved and system advanced to Phase 3
     state = state_store.load(123)
-    current_phase_state = state.get_current_phase_state()
-    assert current_phase_state.approved is True
+    # After approval at Gate 1, system advances to Phase 3
+    assert state.current_phase == WorkflowPhase.PHASE_3_PLANS
+    # Check that Gate 1 in history shows approval
+    gate_1_state = [ps for ps in state.phase_history if ps.phase == WorkflowPhase.GATE_1_SPECS][0]
+    assert gate_1_state.human_approved is True
 
 
 def test_create_feature_executes_phase_1(orchestrator, mock_github_adapter, state_store):
@@ -121,18 +125,22 @@ def test_create_feature_executes_phase_1(orchestrator, mock_github_adapter, stat
 
 
 @patch("farmcode.orchestrator.agent_dispatcher.subprocess.Popen")
-def test_agent_dispatcher_spawns_claude_cli(mock_popen, orchestrator, state_store):
+def test_agent_dispatcher_spawns_claude_cli(mock_popen, mock_config):
     """Test that agent dispatcher spawns Claude CLI with correct config."""
-    # Create feature
-    state = orchestrator.create_feature("Test Feature", "Test description")
+    from farmcode.orchestrator.agent_dispatcher import AgentDispatcher
+    from pathlib import Path
 
-    # Dispatch agent
+    # Create a real agent dispatcher (not mocked)
+    dispatcher = AgentDispatcher()
+
+    # Mock subprocess
     mock_popen.return_value = MagicMock(pid=12345)
 
-    process = orchestrator.agent_dispatcher.dispatch(
+    # Dispatch agent
+    process = dispatcher.dispatch(
         agent_handle="duc",
-        issue_number=state.issue_number,
-        worktree_path=state.worktree_path,
+        issue_number=123,
+        worktree_path=Path("/tmp/test-worktree"),
         phase=WorkflowPhase.PHASE_2_SPECS,
     )
 
@@ -148,11 +156,11 @@ def test_agent_dispatcher_spawns_claude_cli(mock_popen, orchestrator, state_stor
     # Verify environment variables
     env = call_args[1]["env"]
     assert env["FARMCODE_AGENT_HANDLE"] == "duc"
-    assert env["FARMCODE_ISSUE_NUMBER"] == str(state.issue_number)
+    assert env["FARMCODE_ISSUE_NUMBER"] == "123"
     assert "FARMCODE_MCP_SERVER_URL" in env
 
     # Verify working directory
-    assert call_args[1]["cwd"] == str(state.worktree_path)
+    assert call_args[1]["cwd"] == "/tmp/test-worktree"
 
 
 def test_manual_gate_approval(orchestrator, state_store, mock_github_adapter):
@@ -170,10 +178,14 @@ def test_manual_gate_approval(orchestrator, state_store, mock_github_adapter):
     # Approve gate
     result = orchestrator.approve_gate(state.issue_number)
 
-    # Verify approval worked (would advance if Phase 3 existed)
+    # Verify approval worked and system advanced to Phase 3
     assert result is True
     loaded = state_store.load(state.issue_number)
-    assert loaded.get_current_phase_state().approved is True
+    # After approval, system advances to Phase 3
+    assert loaded.current_phase == WorkflowPhase.PHASE_3_PLANS
+    # Check that Gate 1 in history shows approval
+    gate_1_state = [ps for ps in loaded.phase_history if ps.phase == WorkflowPhase.GATE_1_SPECS][0]
+    assert gate_1_state.human_approved is True
 
 
 def test_list_all_features(orchestrator, state_store):
@@ -218,7 +230,7 @@ async def test_polling_loop_with_no_updates(orchestrator, mock_github_adapter):
 
     # Mock no new comments
     mock_github_adapter.get_issue_context.return_value = IssueContext(
-        issue_id="123",
+        issue_number=123,
         title="Test",
         body="Test",
         labels=[],
@@ -242,12 +254,13 @@ async def test_polling_loop_with_multiple_features(orchestrator, mock_github_ada
     # Mock completions for both
     def mock_get_context(issue_id):
         return IssueContext(
-            issue_id=issue_id,
+            issue_number=int(issue_id),
             title=f"Feature {issue_id}",
             body="Test",
             labels=[],
             comments=[
                 Comment(
+                    id="1",
                     author="viollet-le-duc[bot]",
                     body="✅ Complete",
                     created_at=datetime.now(),

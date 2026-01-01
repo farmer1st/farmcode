@@ -70,9 +70,15 @@ YAML-based configuration management.
 
 ## Installation
 
+This project uses [uv](https://github.com/astral-sh/uv) for fast dependency management.
+
 ```bash
-cd apps/backend
-pip install -e .
+# Install uv if you haven't already
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Install dependencies
+uv venv
+uv pip install -e ".[dev]"
 ```
 
 ## Configuration
@@ -145,10 +151,10 @@ asyncio.run(orchestrator.run_polling_loop())
 
 ```bash
 # Run MCP server on default port (8000)
-python -m farmcode.mcp.server
+uv run python -m farmcode.mcp.server
 
 # Custom host/port
-FARMCODE_MCP_HOST=0.0.0.0 FARMCODE_MCP_PORT=9000 python -m farmcode.mcp.server
+FARMCODE_MCP_HOST=0.0.0.0 FARMCODE_MCP_PORT=9000 uv run python -m farmcode.mcp.server
 ```
 
 ## Development
@@ -156,20 +162,27 @@ FARMCODE_MCP_HOST=0.0.0.0 FARMCODE_MCP_PORT=9000 python -m farmcode.mcp.server
 ### Running Tests
 
 ```bash
-pytest
+# Run all tests
+uv run pytest
+
+# Run with coverage
+uv run pytest --cov=farmcode --cov-report=html
+
+# Run specific test file
+uv run pytest tests/test_state_machine.py -v
 ```
 
 ### Type Checking
 
 ```bash
-mypy farmcode
+uv run mypy farmcode
 ```
 
 ### Linting
 
 ```bash
-ruff check farmcode
-ruff format farmcode
+uv run ruff check farmcode
+uv run ruff format farmcode
 ```
 
 ## Architecture

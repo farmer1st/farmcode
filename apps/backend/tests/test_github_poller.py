@@ -5,8 +5,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from farmcode.models.comment import Comment
-from farmcode.models.issue import IssueContext
+from farmcode.adapters.base import Comment, IssueContext
 from farmcode.orchestrator.github_poller import GitHubPoller
 
 
@@ -28,6 +27,7 @@ def test_poll_for_completions_detects_completion(poller, mock_github_adapter):
     now = datetime.now()
     comments = [
         Comment(
+            id="1",
             author="viollet-le-duc[bot]",
             body="✅ **Task Complete** (@duc)\n\nSpecs written to .plans/123/specs/",
             created_at=now,
@@ -35,7 +35,7 @@ def test_poll_for_completions_detects_completion(poller, mock_github_adapter):
     ]
 
     mock_github_adapter.get_issue_context.return_value = IssueContext(
-        issue_id="123",
+        issue_number=123,
         title="Test",
         body="Test",
         labels=[],
@@ -58,11 +58,13 @@ def test_poll_for_completions_filters_by_timestamp(poller, mock_github_adapter):
 
     comments = [
         Comment(
+            id="2",
             author="viollet-le-duc[bot]",
             body="✅ Old completion",
             created_at=old_time,
         ),
         Comment(
+            id="3",
             author="viollet-le-duc[bot]",
             body="✅ New completion",
             created_at=now,
@@ -70,7 +72,7 @@ def test_poll_for_completions_filters_by_timestamp(poller, mock_github_adapter):
     ]
 
     mock_github_adapter.get_issue_context.return_value = IssueContext(
-        issue_id="123",
+        issue_number=123,
         title="Test",
         body="Test",
         labels=[],
@@ -92,6 +94,7 @@ def test_poll_for_approval_detects_approval(poller, mock_github_adapter):
     now = datetime.now()
     comments = [
         Comment(
+            id="4",
             author="user123",
             body="Looks good! approved",
             created_at=now,
@@ -99,7 +102,7 @@ def test_poll_for_approval_detects_approval(poller, mock_github_adapter):
     ]
 
     mock_github_adapter.get_issue_context.return_value = IssueContext(
-        issue_id="123",
+        issue_number=123,
         title="Test",
         body="Test",
         labels=[],
@@ -119,6 +122,7 @@ def test_poll_for_approval_detects_lgtm(poller, mock_github_adapter):
     now = datetime.now()
     comments = [
         Comment(
+            id="5",
             author="reviewer",
             body="LGTM! Ship it.",
             created_at=now,
@@ -126,7 +130,7 @@ def test_poll_for_approval_detects_lgtm(poller, mock_github_adapter):
     ]
 
     mock_github_adapter.get_issue_context.return_value = IssueContext(
-        issue_id="123",
+        issue_number=123,
         title="Test",
         body="Test",
         labels=[],
@@ -145,6 +149,7 @@ def test_poll_for_approval_returns_none_without_approval(poller, mock_github_ada
     now = datetime.now()
     comments = [
         Comment(
+            id="6",
             author="user123",
             body="Needs more work",
             created_at=now,
@@ -152,7 +157,7 @@ def test_poll_for_approval_returns_none_without_approval(poller, mock_github_ada
     ]
 
     mock_github_adapter.get_issue_context.return_value = IssueContext(
-        issue_id="123",
+        issue_number=123,
         title="Test",
         body="Test",
         labels=[],

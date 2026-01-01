@@ -38,9 +38,11 @@ def test_execute_phase_1(phase_manager, mock_github_adapter, mock_config):
     assert state.worktree_path.exists()
     assert (state.worktree_path / ".plans" / "123").exists()
 
-    # Verify Phase 1 marked complete
-    phase_1_state = state.get_current_phase_state()
-    assert phase_1_state.approved is True
+    # Verify Phase 1 is in phase history (auto-completes since it has no agents)
+    # Phase 1 is not a gate, so it doesn't have approved/human_approved
+    # It's complete when all_agents_complete returns True (which it does for empty agents)
+    assert len(state.phase_history) == 1
+    assert state.phase_history[0].phase == WorkflowPhase.PHASE_1_SETUP
 
 
 def test_execute_phase_2(phase_manager, mock_github_adapter, tmp_path):
