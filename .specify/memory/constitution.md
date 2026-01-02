@@ -1,17 +1,20 @@
 <!--
 Sync Impact Report:
-- Version change: 1.1.2 → 1.1.3
-- Modified principles: Principle VIII (Technology Stack Standards) - changed to Vite + React
-- Added sections: None
+- Version change: 1.1.3 → 1.2.0
+- Modified principles: None
+- Added sections:
+  * Principle IX: Thin Client Architecture (new principle)
+  * Client-agnostic API design requirements
 - Removed sections: None
 - Templates requiring updates:
-  ✅ plan-template.md - No changes needed (inherits from constitution)
-  ✅ spec-template.md - No changes needed
-  ✅ tasks-template.md - No changes needed
+  ✅ plan-template.md - Constitution Check will now verify thin client compliance
+  ✅ spec-template.md - API contracts must be client-agnostic
+  ✅ tasks-template.md - No frontend business logic tasks allowed
   ✅ All command files reviewed - no updates needed
 - Follow-up TODOs: None
-- Rationale for PATCH bump: Refinement of frontend framework (Next.js → Vite + React for SPA architecture)
+- Rationale for MINOR bump: New architectural principle added (Thin Client Architecture)
 Previous changes:
+- 1.1.2 → 1.1.3: Changed to Vite + React for SPA architecture
 - 1.1.1 → 1.1.2: Added Pydantic v2 for backend data validation
 - 1.1.0 → 1.1.1: Added shadcn/ui for UI components
 - 1.0.0 → 1.1.0: Added Principle VIII (Technology Stack Standards) and Monorepo Structure
@@ -150,6 +153,52 @@ Previous changes:
 
 **Rationale**: Standardized tooling reduces cognitive load, enables code sharing, simplifies CI/CD, and ensures consistent developer experience. The selected tools are industry-standard, well-maintained, and optimized for monorepo development. The SPA architecture with Vite provides fast builds, simple deployment, and clear separation between frontend and backend concerns.
 
+### IX. Thin Client Architecture (NON-NEGOTIABLE)
+
+**Rule**: ALL business logic, validation, and intelligence MUST reside in the backend. Clients are presentation-only.
+
+**Implementation**:
+- Backend APIs MUST be completely client-agnostic
+- Frontend MUST NOT contain any business logic or domain rules
+- All validation, calculations, and decisions happen server-side
+- Clients only handle: UI rendering, user input collection, API calls, display formatting
+- API design MUST support multiple client types (web, TUI, mobile, CLI, etc.)
+- Backend MUST return fully processed, ready-to-display data
+- Frontend state management limited to UI state only (not business state)
+
+**Prohibited in Clients**:
+- ❌ Business rule validation (e.g., "is this order valid?")
+- ❌ Calculations or transformations (e.g., "calculate total price")
+- ❌ Authorization decisions (e.g., "can user do this?")
+- ❌ Data filtering based on business rules
+- ❌ Workflow logic or state machines
+- ❌ Domain-specific algorithms
+
+**Allowed in Clients**:
+- ✅ Form input validation (format only, e.g., "is email format valid?")
+- ✅ UI state (modals open/closed, current tab, etc.)
+- ✅ Display formatting (dates, currency display)
+- ✅ Client-side routing and navigation
+- ✅ Optimistic UI updates (with server confirmation)
+- ✅ Caching server responses
+
+**API Design Requirements**:
+- Endpoints MUST return complete, processed data structures
+- Backend MUST handle all filtering, sorting, pagination
+- Responses MUST include all display-ready information
+- Backend MUST perform all access control checks
+- APIs MUST be RESTful or GraphQL (not RPC-style with client logic)
+- OpenAPI/Swagger specs MUST document all endpoints
+
+**Multi-Client Support**:
+- Same backend APIs serve web, TUI, mobile, CLI clients
+- Client type detected via User-Agent or explicit client parameter
+- Response format may vary (JSON, text, etc.) but data is identical
+- Feature parity across all client types
+- Backend testing MUST NOT assume specific client type
+
+**Rationale**: Thin client architecture enables multiple client implementations, simplifies testing, centralizes security and business logic, prevents logic duplication, and makes the system easier to maintain and evolve. When adding a TUI or mobile client later, no backend changes should be needed.
+
 ## Monorepo Structure
 
 **Repository Layout**:
@@ -266,4 +315,4 @@ farmcode/
 
 **Guidance Document**: See `.specify/templates/` for implementation guidance and workflow execution details.
 
-**Version**: 1.1.3 | **Ratified**: 2026-01-02 | **Last Amended**: 2026-01-02
+**Version**: 1.2.0 | **Ratified**: 2026-01-02 | **Last Amended**: 2026-01-02
