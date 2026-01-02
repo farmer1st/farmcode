@@ -1,7 +1,7 @@
 <!--
 Sync Impact Report:
-- Version change: 1.1.1 → 1.1.2
-- Modified principles: Principle VIII (Technology Stack Standards) - added Pydantic requirement
+- Version change: 1.1.2 → 1.1.3
+- Modified principles: Principle VIII (Technology Stack Standards) - changed to Vite + React
 - Added sections: None
 - Removed sections: None
 - Templates requiring updates:
@@ -10,8 +10,9 @@ Sync Impact Report:
   ✅ tasks-template.md - No changes needed
   ✅ All command files reviewed - no updates needed
 - Follow-up TODOs: None
-- Rationale for PATCH bump: Clarification of backend data validation tooling (Pydantic)
+- Rationale for PATCH bump: Refinement of frontend framework (Next.js → Vite + React for SPA architecture)
 Previous changes:
+- 1.1.1 → 1.1.2: Added Pydantic v2 for backend data validation
 - 1.1.0 → 1.1.1: Added shadcn/ui for UI components
 - 1.0.0 → 1.1.0: Added Principle VIII (Technology Stack Standards) and Monorepo Structure
 - Initial: 1.0.0 ratified with 7 core principles
@@ -131,12 +132,15 @@ Previous changes:
 
 **Frontend Stack** (TypeScript):
 - **Language**: TypeScript 5.0+
-- **Framework**: Next.js 14+ (App Router) for full-stack React applications
+- **Build Tool**: Vite for fast builds and hot module replacement
+- **Framework**: React 18+ for UI components (SPA architecture)
+- **Routing**: React Router v6 for client-side routing
 - **UI Components**: shadcn/ui (Radix UI primitives + Tailwind CSS)
 - **Styling**: Tailwind CSS for utility-first styling
 - **Linting**: ESLint + Prettier for code quality
 - **Testing**: Vitest for unit/integration tests, Playwright for E2E
 - **State Management**: React Context/Zustand (avoid Redux unless justified)
+- **HTTP Client**: TanStack Query (React Query) for server state management
 
 **Development Tools**:
 - **Containerization**: Docker for local development and deployment
@@ -144,7 +148,7 @@ Previous changes:
 - **Code Quality**: Pre-commit hooks enforcing linting and tests
 - **Documentation**: Markdown for all documentation
 
-**Rationale**: Standardized tooling reduces cognitive load, enables code sharing, simplifies CI/CD, and ensures consistent developer experience. The selected tools are industry-standard, well-maintained, and optimized for monorepo development.
+**Rationale**: Standardized tooling reduces cognitive load, enables code sharing, simplifies CI/CD, and ensures consistent developer experience. The selected tools are industry-standard, well-maintained, and optimized for monorepo development. The SPA architecture with Vite provides fast builds, simple deployment, and clear separation between frontend and backend concerns.
 
 ## Monorepo Structure
 
@@ -157,10 +161,11 @@ farmcode/
 │   │   ├── src/
 │   │   ├── tests/
 │   │   └── pyproject.toml
-│   └── web/              # Frontend application (Next.js)
+│   └── web/              # Frontend SPA (Vite + React)
 │       ├── src/
 │       ├── tests/
-│       └── package.json
+│       ├── package.json
+│       └── vite.config.ts
 ├── packages/
 │   ├── shared-types/     # Shared TypeScript types
 │   ├── ui/               # shadcn/ui components (copied into project)
@@ -261,4 +266,4 @@ farmcode/
 
 **Guidance Document**: See `.specify/templates/` for implementation guidance and workflow execution details.
 
-**Version**: 1.1.2 | **Ratified**: 2026-01-02 | **Last Amended**: 2026-01-02
+**Version**: 1.1.3 | **Ratified**: 2026-01-02 | **Last Amended**: 2026-01-02
