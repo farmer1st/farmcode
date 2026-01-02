@@ -1,7 +1,7 @@
 <!--
 Sync Impact Report:
-- Version change: 1.1.0 → 1.1.1
-- Modified principles: Principle VIII (Technology Stack Standards) - refined frontend UI tooling
+- Version change: 1.1.1 → 1.1.2
+- Modified principles: Principle VIII (Technology Stack Standards) - added Pydantic requirement
 - Added sections: None
 - Removed sections: None
 - Templates requiring updates:
@@ -10,8 +10,9 @@ Sync Impact Report:
   ✅ tasks-template.md - No changes needed
   ✅ All command files reviewed - no updates needed
 - Follow-up TODOs: None
-- Rationale for PATCH bump: Clarification of frontend UI component strategy (shadcn/ui)
+- Rationale for PATCH bump: Clarification of backend data validation tooling (Pydantic)
 Previous changes:
+- 1.1.0 → 1.1.1: Added shadcn/ui for UI components
 - 1.0.0 → 1.1.0: Added Principle VIII (Technology Stack Standards) and Monorepo Structure
 - Initial: 1.0.0 ratified with 7 core principles
 -->
@@ -126,6 +127,7 @@ Previous changes:
 - **Testing**: pytest with pytest-asyncio for async code
 - **Type Checking**: mypy for static type analysis
 - **Framework**: FastAPI (API services) or similar based on requirements
+- **Data Validation**: Pydantic v2 for data models, validation, and settings management
 
 **Frontend Stack** (TypeScript):
 - **Language**: TypeScript 5.0+
@@ -259,4 +261,4 @@ farmcode/
 
 **Guidance Document**: See `.specify/templates/` for implementation guidance and workflow execution details.
 
-**Version**: 1.1.1 | **Ratified**: 2026-01-02 | **Last Amended**: 2026-01-02
+**Version**: 1.1.2 | **Ratified**: 2026-01-02 | **Last Amended**: 2026-01-02
