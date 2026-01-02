@@ -1,19 +1,20 @@
 <!--
 Sync Impact Report:
-- Version change: 1.1.3 → 1.2.0
-- Modified principles: None
+- Version change: 1.2.0 → 1.2.1
+- Modified principles: Principle VIII (Technology Stack Standards) - added deployment guidance
 - Added sections:
-  * Principle IX: Thin Client Architecture (new principle)
-  * Client-agnostic API design requirements
+  * Deployment Strategy section added
+  * Local-first, cloud-ready architecture requirements
 - Removed sections: None
 - Templates requiring updates:
-  ✅ plan-template.md - Constitution Check will now verify thin client compliance
-  ✅ spec-template.md - API contracts must be client-agnostic
-  ✅ tasks-template.md - No frontend business logic tasks allowed
+  ✅ plan-template.md - Architecture must consider deployment flexibility
+  ✅ spec-template.md - No changes needed
+  ✅ tasks-template.md - No changes needed
   ✅ All command files reviewed - no updates needed
 - Follow-up TODOs: None
-- Rationale for MINOR bump: New architectural principle added (Thin Client Architecture)
+- Rationale for PATCH bump: Clarification of deployment strategy (local-first with AWS/K8s option)
 Previous changes:
+- 1.1.3 → 1.2.0: Added Principle IX (Thin Client Architecture)
 - 1.1.2 → 1.1.3: Changed to Vite + React for SPA architecture
 - 1.1.1 → 1.1.2: Added Pydantic v2 for backend data validation
 - 1.1.0 → 1.1.1: Added shadcn/ui for UI components
@@ -151,7 +152,25 @@ Previous changes:
 - **Code Quality**: Pre-commit hooks enforcing linting and tests
 - **Documentation**: Markdown for all documentation
 
-**Rationale**: Standardized tooling reduces cognitive load, enables code sharing, simplifies CI/CD, and ensures consistent developer experience. The selected tools are industry-standard, well-maintained, and optimized for monorepo development. The SPA architecture with Vite provides fast builds, simple deployment, and clear separation between frontend and backend concerns.
+**Deployment Strategy**:
+- **Primary**: Local deployment (development, single-user, on-premises)
+- **Future Option**: AWS deployment with SPA (S3/CloudFront) + Kubernetes workloads
+- **Architecture**: Local-first, cloud-ready (avoid cloud-specific dependencies)
+- **Constraints**:
+  - Backend MUST run in containers (Docker/Podman)
+  - Frontend MUST be deployable as static files
+  - No hard dependencies on cloud-specific services (use abstraction)
+  - Configuration MUST support both local and cloud environments
+  - Database/storage MUST be swappable (local SQLite/PostgreSQL vs RDS)
+  - Secrets management MUST work locally and in cloud
+- **Design Principles**:
+  - 12-factor app methodology where applicable
+  - Environment-based configuration (not deployment-based)
+  - Stateless backend services (horizontal scaling ready)
+  - Health checks and readiness probes
+  - Graceful shutdown handling
+
+**Rationale**: Standardized tooling reduces cognitive load, enables code sharing, simplifies CI/CD, and ensures consistent developer experience. The selected tools are industry-standard, well-maintained, and optimized for monorepo development. The SPA architecture with Vite provides fast builds, simple deployment, and clear separation between frontend and backend concerns. Local-first design ensures no vendor lock-in while keeping cloud deployment as a viable option.
 
 ### IX. Thin Client Architecture (NON-NEGOTIABLE)
 
@@ -315,4 +334,4 @@ farmcode/
 
 **Guidance Document**: See `.specify/templates/` for implementation guidance and workflow execution details.
 
-**Version**: 1.2.0 | **Ratified**: 2026-01-02 | **Last Amended**: 2026-01-02
+**Version**: 1.2.1 | **Ratified**: 2026-01-02 | **Last Amended**: 2026-01-02
