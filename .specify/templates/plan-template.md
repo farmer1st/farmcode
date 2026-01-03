@@ -94,6 +94,26 @@ ios/ or android/
 **Structure Decision**: [Document the selected structure and reference the real
 directories captured above]
 
+## User Journey Mapping (REQUIRED per Constitution Principle XI)
+
+**Journey Domain**: [2-4 letter code, e.g., WT=Worktree, GH=GitHub, ORC=Orchestrator]
+
+Map each user story to its corresponding user journey:
+
+| User Story | Journey ID | Journey Name | Priority |
+|------------|------------|--------------|----------|
+| US1: [Title] | [DOMAIN]-001 | [Journey name] | P1 |
+| US2: [Title] | [DOMAIN]-002 | [Journey name] | P2 |
+| US3: [Title] | [DOMAIN]-003 | [Journey name] | P3 |
+
+**Journey Files to Create**:
+- `docs/user-journeys/[DOMAIN]-001-[name].md`
+- `docs/user-journeys/[DOMAIN]-002-[name].md`
+- Update `docs/user-journeys/JOURNEYS.md`
+
+**E2E Test Markers**:
+- Each E2E test class should be marked with `@pytest.mark.journey("[DOMAIN]-NNN")`
+
 ## Complexity Tracking
 
 > **Fill ONLY if Constitution Check has violations that must be justified**

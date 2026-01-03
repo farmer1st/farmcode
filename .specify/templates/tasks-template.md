@@ -150,7 +150,20 @@ Examples of foundational tasks (adjust based on your project):
 
 **Purpose**: Improvements that affect multiple user stories
 
+### User Journey Documentation (REQUIRED per Constitution Principle XI)
+
+- [ ] TXXX [P] Create user journey docs in docs/user-journeys/[DOMAIN]-001-[name].md
+- [ ] TXXX [P] Create user journey docs in docs/user-journeys/[DOMAIN]-002-[name].md
+- [ ] TXXX Update docs/user-journeys/JOURNEYS.md with new journeys
+- [ ] TXXX Add @pytest.mark.journey("[DOMAIN]-XXX") markers to E2E tests
+
+### Module Documentation
+
+- [ ] TXXX [P] Create/update module README in src/[module]/README.md
 - [ ] TXXX [P] Documentation updates in docs/
+
+### Quality & Validation
+
 - [ ] TXXX Code cleanup and refactoring
 - [ ] TXXX Performance optimization across all stories
 - [ ] TXXX [P] Additional unit tests (if requested) in tests/unit/

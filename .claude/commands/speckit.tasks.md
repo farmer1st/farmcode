@@ -45,12 +45,21 @@ You **MUST** consider the user input before proceeding (if not empty).
    - Phase 2: Foundational tasks (blocking prerequisites for all user stories)
    - Phase 3+: One phase per user story (in priority order from spec.md)
    - Each phase includes: story goal, independent test criteria, tests (if requested), implementation tasks
-   - Final Phase: Polish & cross-cutting concerns
+   - Final Phase: Polish & cross-cutting concerns (MUST include user journey tasks - see below)
    - All tasks must follow the strict checklist format (see Task Generation Rules below)
    - Clear file paths for each task
    - Dependencies section showing story completion order
    - Parallel execution examples per story
    - Implementation strategy section (MVP first, incremental delivery)
+
+   **User Journey Tasks (REQUIRED per Constitution Principle XI)**:
+   The Polish phase MUST include these tasks:
+   - One task per user story to create its user journey doc in `docs/user-journeys/[DOMAIN]-NNN-[name].md`
+   - Task to update `docs/user-journeys/JOURNEYS.md` with new journeys
+   - Task to add `@pytest.mark.journey("[DOMAIN]-NNN")` markers to E2E tests
+   - Task to create/update module README in `src/[module]/README.md`
+
+   Journey domain should match the feature (e.g., WT for Worktree, GH for GitHub, ORC for Orchestrator)
 
 5. **Report**: Output path to generated tasks.md and summary:
    - Total task count
