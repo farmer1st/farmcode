@@ -21,8 +21,6 @@ from datetime import datetime
 from io import StringIO
 from unittest.mock import patch
 
-import pytest
-
 from src.github_integration.logger import JSONFormatter, logger, setup_logger
 
 

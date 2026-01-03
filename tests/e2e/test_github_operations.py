@@ -93,20 +93,14 @@ class TestFullIssueLifecycle:
 
         # Step 3: Wait for issue to appear in list (handles eventual consistency)
         # Note: GitHub API may take a moment to index newly created issues
-        assert wait_for_issue_in_list(
-            service,
-            created_issue.number,
-            state="open",
-            timeout=10.0
-        ), f"Issue #{created_issue.number} did not appear in list after 10s"
+        assert wait_for_issue_in_list(service, created_issue.number, state="open", timeout=10.0), (
+            f"Issue #{created_issue.number} did not appear in list after 10s"
+        )
 
         # Step 4: Wait for issue to appear in label-filtered list
         # Note: Label indexing may have additional delay
         assert wait_for_issue_in_list(
-            service,
-            created_issue.number,
-            labels=["test"],
-            timeout=10.0
+            service, created_issue.number, labels=["test"], timeout=10.0
         ), f"Issue #{created_issue.number} did not appear in label-filtered list after 10s"
 
     @pytest.mark.journey("ORC-005")
@@ -125,8 +119,8 @@ class TestFullIssueLifecycle:
         issues = []
         for i in range(3):
             issue = auto_cleanup_issue(
-                title=f"[E2E TEST] Batch issue {i+1}",
-                body=f"Test issue number {i+1}",
+                title=f"[E2E TEST] Batch issue {i + 1}",
+                body=f"Test issue number {i + 1}",
                 labels=["test", "batch"],
             )
             issues.append(issue)
@@ -144,8 +138,5 @@ class TestFullIssueLifecycle:
         # Verify all appear in list (with polling for eventual consistency)
         for created_issue in issues:
             assert wait_for_issue_in_list(
-                service,
-                created_issue.number,
-                labels=["batch"],
-                timeout=10.0
+                service, created_issue.number, labels=["batch"], timeout=10.0
             ), f"Issue #{created_issue.number} not found in batch list after 10s"

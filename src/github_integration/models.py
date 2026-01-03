@@ -59,9 +59,7 @@ class Label(BaseModel):
     model_config = ConfigDict(frozen=True)  # Immutable
 
     name: str = Field(..., description="Label name", min_length=1, max_length=50)
-    color: str = Field(
-        ..., description="Hex color code (without #)", pattern="^[0-9A-Fa-f]{6}$"
-    )
+    color: str = Field(..., description="Hex color code (without #)", pattern="^[0-9A-Fa-f]{6}$")
     description: str | None = Field(None, description="Label description")
 
     @property
@@ -82,9 +80,7 @@ class PullRequest(BaseModel):
     merged: bool = Field(..., description="Whether PR is merged")
     base_branch: str = Field(..., description="Base branch name (e.g., main)")
     head_branch: str = Field(..., description="Head branch name (e.g., 123-add-auth)")
-    linked_issues: list[int] = Field(
-        default_factory=list, description="Linked issue numbers"
-    )
+    linked_issues: list[int] = Field(default_factory=list, description="Linked issue numbers")
     url: str = Field(..., description="GitHub PR URL")
 
     def is_linked_to(self, issue_number: int) -> bool:
@@ -93,6 +89,7 @@ class PullRequest(BaseModel):
 
 
 # Request Models
+
 
 class CreateIssueRequest(BaseModel):
     """Request to create a new issue"""

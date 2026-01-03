@@ -20,7 +20,6 @@ import requests
 from src.github_integration.auth import GitHubAppAuth, InstallationToken
 from src.github_integration.errors import AuthenticationError
 
-
 # Dummy key content that passes file validation (actual key validation is mocked)
 DUMMY_KEY_CONTENT = "-----BEGIN RSA PRIVATE KEY-----\ndummy\n-----END RSA PRIVATE KEY-----"
 
@@ -235,8 +234,7 @@ class TestJWTGeneration:
 
             mock_encode.assert_called_once()
             call_args = mock_encode.call_args
-            assert call_args.kwargs.get("algorithm") == "RS256" or \
-                   call_args.args[2] == "RS256"
+            assert call_args.kwargs.get("algorithm") == "RS256" or call_args.args[2] == "RS256"
 
     def test_jwt_payload_contains_app_id(self, temp_private_key):
         """JWT payload should contain app_id as 'iss' claim"""
@@ -294,9 +292,7 @@ class TestErrorHandling:
         mock_response = MagicMock()
         mock_response.status_code = 401
         mock_response.text = "Bad credentials"
-        mock_response.raise_for_status.side_effect = requests.HTTPError(
-            response=mock_response
-        )
+        mock_response.raise_for_status.side_effect = requests.HTTPError(response=mock_response)
 
         with patch("src.github_integration.auth.jwt.encode") as mock_jwt:
             mock_jwt.return_value = "mocked-jwt-token"

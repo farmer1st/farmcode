@@ -56,9 +56,7 @@ class GitHubService:
         """
         # Validate repository format
         if not re.match(r"^[a-zA-Z0-9_-]+/[a-zA-Z0-9_-]+$", repository):
-            raise ValueError(
-                f"Invalid repository format: {repository}. Must be 'owner/repo'"
-            )
+            raise ValueError(f"Invalid repository format: {repository}. Must be 'owner/repo'")
 
         self.app_id = app_id
         self.installation_id = installation_id
@@ -876,6 +874,7 @@ class GitHubService:
         linked_issues: list[int] = []
         body = data.get("body") or ""
         import re
+
         matches = re.findall(r"(?:closes|fixes|resolves)\s+#(\d+)", body, re.IGNORECASE)
         linked_issues = [int(m) for m in matches]
 

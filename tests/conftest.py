@@ -11,6 +11,7 @@ import pytest
 
 # GitHub App Configuration Fixtures
 
+
 @pytest.fixture
 def github_app_id() -> int:
     """GitHub App ID"""
@@ -36,6 +37,7 @@ def github_private_key_path() -> str:
 
 
 # Test Data Fixtures
+
 
 @pytest.fixture
 def sample_issue_data() -> dict[str, Any]:
@@ -95,6 +97,7 @@ def sample_pr_data() -> dict[str, Any]:
 
 # GitHub API Mock Response Fixtures
 
+
 @pytest.fixture
 def mock_github_issue_response() -> dict[str, Any]:
     """Mock GitHub API response for issue"""
@@ -143,6 +146,7 @@ def mock_github_pr_response() -> dict[str, Any]:
 
 # E2E Test Helpers (for handling eventual consistency with real GitHub API)
 
+
 def wait_for_condition(condition_fn, timeout: float = 10.0, poll_interval: float = 0.5) -> bool:
     """
     Poll until condition is met or timeout.
@@ -156,6 +160,7 @@ def wait_for_condition(condition_fn, timeout: float = 10.0, poll_interval: float
         True if condition met, False if timeout
     """
     import time
+
     start = time.time()
     while time.time() - start < timeout:
         if condition_fn():
@@ -192,6 +197,7 @@ def wait_for_issue_in_list(
         issue = service.create_issue(title="Test")
         assert wait_for_issue_in_list(service, issue.number, labels=["test"])
     """
+
     def check():
         issues = service.list_issues(state=state, labels=labels)
         return any(i.number == issue_number for i in issues)
@@ -217,6 +223,7 @@ def wait_for_issue_labels(
     Returns:
         True if labels present, False if timeout
     """
+
     def check():
         issue = service.get_issue(issue_number)
         return all(label in issue.labels for label in expected_labels)
@@ -417,6 +424,6 @@ def pytest_terminal_summary(terminalreporter, exitstatus, config):
 
     terminalreporter.write_line(
         f"Journey Coverage: {passing_journeys}/{total_journeys} journeys passing",
-        **{"green" if passing_journeys == total_journeys else "yellow": True}
+        **{"green" if passing_journeys == total_journeys else "yellow": True},
     )
     terminalreporter.write_line("")

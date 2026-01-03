@@ -33,10 +33,7 @@ class TestUpdateIssue:
         - Other fields remain unchanged
         """
         # Create test issue with automatic cleanup
-        issue = auto_cleanup_issue(
-            title="Original title",
-            body="Original body"
-        )
+        issue = auto_cleanup_issue(title="Original title", body="Original body")
 
         # Update title only
         updated = service.update_issue(issue.number, title="New title")
@@ -75,17 +72,11 @@ class TestUpdateIssue:
         - Unspecified fields remain unchanged
         """
         # Create test issue with automatic cleanup
-        issue = auto_cleanup_issue(
-            title="Original",
-            body="Original body"
-        )
+        issue = auto_cleanup_issue(title="Original", body="Original body")
 
         # Update multiple fields
         updated = service.update_issue(
-            issue.number,
-            title="Updated title",
-            body="Updated body",
-            state="closed"
+            issue.number, title="Updated title", body="Updated body", state="closed"
         )
 
         # Verify

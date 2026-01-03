@@ -199,9 +199,7 @@ class GitHubAPIClient:
                     time.sleep(self.RETRY_DELAY)
                     continue
                 else:
-                    raise ServerError(
-                        f"Network error after {self.MAX_RETRIES} retries: {e}"
-                    ) from e
+                    raise ServerError(f"Network error after {self.MAX_RETRIES} retries: {e}") from e
 
             except (RateLimitExceeded, ResourceNotFoundError):
                 # Don't retry rate limit or 404 errors

@@ -68,9 +68,7 @@ class GitHubAppAuth:
 
         # Validate PEM file exists
         if not self.private_key_path.exists():
-            raise FileNotFoundError(
-                f"GitHub App private key not found: {self.private_key_path}"
-            )
+            raise FileNotFoundError(f"GitHub App private key not found: {self.private_key_path}")
 
         # Validate PEM file permissions (must be 600)
         if self.private_key_path.stat().st_mode & 0o777 != 0o600:
@@ -183,11 +181,7 @@ class GitHubAppAuth:
         if self._cached_token and not self._cached_token.is_expired():
             logger.debug(
                 "Using cached installation token",
-                extra={
-                    "context": {
-                        "expires_at": self._cached_token.expires_at.isoformat()
-                    }
-                },
+                extra={"context": {"expires_at": self._cached_token.expires_at.isoformat()}},
             )
             return self._cached_token.token
 

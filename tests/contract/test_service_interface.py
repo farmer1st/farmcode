@@ -37,6 +37,7 @@ from github_integration import (
 
 # Test fixtures for service initialization
 
+
 @pytest.fixture
 def service(github_app_id, github_installation_id, github_private_key_path, github_repository):
     """Create GitHubService instance for testing"""
@@ -49,6 +50,7 @@ def service(github_app_id, github_installation_id, github_private_key_path, gith
 
 
 # User Story 1: Create and Track Workflow Issues
+
 
 class TestCreateIssue:
     """Contract tests for create_issue method"""
@@ -260,6 +262,7 @@ class TestListIssues:
 
 # User Story 2: Facilitate Agent Communication
 
+
 class TestCreateComment:
     """Contract tests for create_comment method"""
 
@@ -424,6 +427,7 @@ class TestGetCommentsSince:
 
         # Set timestamp to future
         import time
+
         time.sleep(1)
         since = datetime.now(UTC)
 
@@ -451,6 +455,7 @@ class TestGetCommentsSince:
 
 
 # User Story 3: Track Workflow State
+
 
 class TestAddLabels:
     """Contract tests for add_labels method"""
@@ -571,6 +576,7 @@ class TestRemoveLabels:
 
 
 # User Story 4: Manage Code Review Process
+
 
 class TestCreatePullRequest:
     """Contract tests for create_pull_request method"""

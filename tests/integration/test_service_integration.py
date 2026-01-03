@@ -17,14 +17,16 @@ from github_integration import GitHubService, Issue, ValidationError
 @pytest.fixture
 def mock_requests():
     """Mock requests library for HTTP calls"""
-    with patch("github_integration.client.requests") as mock_client, \
-         patch("github_integration.auth.requests") as mock_auth:
+    with (
+        patch("github_integration.client.requests") as mock_client,
+        patch("github_integration.auth.requests") as mock_auth,
+    ):
         # Mock auth token fetch
         mock_auth_response = Mock()
         mock_auth_response.status_code = 200
         mock_auth_response.json.return_value = {
             "token": "ghs_test_token",
-            "expires_at": "2026-01-02T14:00:00Z"
+            "expires_at": "2026-01-02T14:00:00Z",
         }
         mock_auth.post.return_value = mock_auth_response
 
