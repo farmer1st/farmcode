@@ -3,7 +3,7 @@
 **Purpose**: Type-safe GitHub API client for FarmCode orchestrator using GitHub App authentication.
 
 **Version**: 1.0.0 (Feature 001 - GitHub Integration Core)
-**Status**: ✅ Implemented (User Story 1 complete, User Stories 2-4 planned)
+**Status**: ✅ Fully Implemented (All 4 User Stories complete)
 
 ## Overview
 
@@ -41,23 +41,22 @@ This module provides a clean, type-safe interface for GitHub operations using Gi
   - Full type hints with mypy strict mode
   - Immutable models
 
-### Planned (Future User Stories)
+- ✅ **Comment Management** (User Story 2)
+  - Create comments with mentions
+  - Get comments for an issue
+  - Get comments since a specific timestamp
+  - Signal detection (✅/❌) via helper methods
+  - Mention extraction (@agent-name) via helper methods
 
-- 📋 **Comment Management** (User Story 2)
-  - Add comments with mentions
-  - List issue comments
-  - Signal detection (✅/❌)
-  - Mention extraction (@agent-name)
-
-- 📋 **Label Management** (User Story 3)
-  - Create/update labels
-  - Workflow state tracking
+- ✅ **Label Management** (User Story 3)
+  - Add labels to issues (auto-creates if needed)
+  - Remove labels from issues (idempotent)
   - Label-based queries
 
-- 📋 **Pull Request Management** (User Story 4)
-  - Create PRs with issue linking
-  - List PRs by linked issues
-  - PR metadata retrieval
+- ✅ **Pull Request Management** (User Story 4)
+  - Create PRs with issue linking ("Closes #X" in body)
+  - Get PR by number
+  - List PRs with state filtering
 
 ## Quick Start
 
@@ -107,11 +106,39 @@ issue = service.create_issue(
 print(f"Created issue #{issue.number}: {issue.title}")
 # Output: Created issue #42: Add user authentication
 
-# Update issue
-updated = service.update_issue(
-    issue.number,
-    labels=["status:specs-ready"],  # Progress to next phase
+# Add a comment
+comment = service.create_comment(
+    issue_number=issue.number,
+    body="@duc Please review the spec. ✅ Approved"
 )
+print(f"Added comment #{comment.id}")
+
+# Check comment helpers
+print(comment.contains_signal("✅"))  # True
+print(comment.extract_mentions())      # ["duc"]
+
+# Get all comments
+comments = service.get_comments(issue.number)
+for c in comments:
+    print(f"{c.author}: {c.body}")
+
+# Manage labels
+service.add_labels(issue.number, ["status:in-review", "priority:p0"])
+service.remove_labels(issue.number, ["status:new"])
+
+# Create a PR that closes the issue
+pr = service.create_pull_request(
+    title="Implement user authentication",
+    body="Closes #42\n\nAdds OAuth2 flow as specified.",
+    base="main",
+    head="feature/user-auth"
+)
+print(f"Created PR #{pr.number}: {pr.title}")
+
+# List open PRs
+open_prs = service.list_pull_requests(state="open")
+for pr in open_prs:
+    print(f"PR #{pr.number}: {pr.title} ({pr.state})")
 
 # Close issue when done
 closed = service.close_issue(issue.number)
@@ -198,6 +225,48 @@ Main service interface for GitHub operations.
 - Equivalent to `update_issue(issue_number, state="closed")`
 - Returns: Closed issue
 
+#### Comment Methods (User Story 2)
+
+**create_comment(issue_number, body) -> Comment**
+- Adds a comment to an issue
+- Supports markdown, mentions (@username), and signals (✅/❌)
+- Raises: `ValidationError` if body is empty
+
+**get_comments(issue_number) -> list[Comment]**
+- Returns all comments in chronological order
+- Returns empty list if no comments
+
+**get_comments_since(issue_number, since) -> list[Comment]**
+- Returns comments created after `since` timestamp
+- `since` must be timezone-aware datetime
+- Raises: `ValidationError` if timezone missing
+
+#### Label Methods (User Story 3)
+
+**add_labels(issue_number, labels) -> None**
+- Adds labels to an issue
+- Auto-creates labels that don't exist in repository
+- Idempotent - adding existing labels is safe
+
+**remove_labels(issue_number, labels) -> None**
+- Removes labels from an issue
+- Idempotent - removing non-existent labels is safe
+
+#### Pull Request Methods (User Story 4)
+
+**create_pull_request(title, body, base, head) -> PullRequest**
+- Creates a new PR from `head` branch to `base` branch
+- Include "Closes #X" in body to link to issues
+- Raises: `ValidationError` for invalid branches
+
+**get_pull_request(pr_number) -> PullRequest**
+- Retrieves PR by number
+- Raises: `ResourceNotFoundError` if PR doesn't exist
+
+**list_pull_requests(state="open") -> list[PullRequest]**
+- Lists PRs with state filtering
+- `state`: "open", "closed", or "all"
+
 ### Models
 
 **Issue**
@@ -211,9 +280,34 @@ Main service interface for GitHub operations.
 - `updated_at: datetime` - Last update timestamp
 - `repository: str` - Repository (owner/repo)
 - `url: str` - GitHub web URL
+- `has_label(name) -> bool` - Check if issue has a specific label
 
-**Comment, Label, PullRequest** (Planned for User Stories 2-4)
-- See `models.py` for model definitions
+**Comment**
+- `id: int` - Comment ID (positive)
+- `body: str` - Comment text (markdown)
+- `author: str` - GitHub username
+- `created_at: datetime` - Creation timestamp
+- `contains_signal(signal) -> bool` - Check for signal (✅/❌)
+- `extract_mentions() -> list[str]` - Extract @mentions
+
+**Label**
+- `name: str` - Label name (1-50 chars)
+- `color: str` - 6-char hex color (without #)
+- `description: Optional[str]` - Label description
+- `hex_color -> str` - Color with # prefix
+
+**PullRequest**
+- `number: int` - PR number (positive)
+- `title: str` - PR title
+- `body: Optional[str]` - Description (markdown)
+- `state: str` - "open", "closed", or "merged"
+- `base: str` - Target branch
+- `head: str` - Source branch
+- `merged: bool` - Whether PR is merged
+- `created_at: datetime` - Creation timestamp
+- `updated_at: datetime` - Last update timestamp
+- `url: str` - GitHub web URL
+- `is_linked_to(issue_number) -> bool` - Check if PR closes an issue
 
 ## Testing
 
@@ -253,9 +347,13 @@ pytest --cov=github_integration --cov-report=html
 
 ### Test Coverage
 
-- **Overall**: 88% code coverage
-- **service.py**: 95% coverage
+- **Overall**: 90% code coverage (159 tests)
+- **service.py**: 80% coverage
 - **models.py**: 100% coverage
+- **errors.py**: 100% coverage
+- **logger.py**: 100% coverage
+- **client.py**: 99% coverage
+- **auth.py**: 97% coverage
 
 ### User Journey Coverage
 

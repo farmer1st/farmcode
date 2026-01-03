@@ -188,17 +188,17 @@
 
 **Purpose**: Improvements that affect multiple user stories
 
-- [ ] T074 [P] Add unit tests for retry logic in tests/unit/test_retry_logic.py
-- [ ] T075 [P] Add unit tests for authentication token caching in tests/unit/test_auth.py
-- [ ] T076 [P] Add error handling tests for all exception types in tests/unit/test_error_handling.py
-- [ ] T077 [P] Verify structured JSON logging format meets specification in tests/unit/test_logger.py
-- [ ] T078 Run complete quickstart.md validation (all tests)
+- [X] T074 [P] Add unit tests for retry logic in tests/unit/test_retry_logic.py
+- [X] T075 [P] Add unit tests for authentication token caching in tests/unit/test_auth.py
+- [X] T076 [P] Add error handling tests for all exception types in tests/unit/test_error_handling.py
+- [X] T077 [P] Verify structured JSON logging format meets specification in tests/unit/test_logger.py
+- [X] T078 Run complete quickstart.md validation (all tests)
 - [X] T079 Run ruff linter and fix any issues
 - [X] T080 Run mypy type checker and fix any type errors
-- [ ] T081 [P] Update README.md with usage examples
-- [ ] T082 Verify all success criteria from spec.md (<2s, <1s, 95% success rate)
-- [ ] T083 Performance testing: 100 consecutive operations (SC-002)
-- [ ] T084 Final code review against constitution principles
+- [X] T081 [P] Update README.md with usage examples
+- [X] T082 Verify all success criteria from spec.md (<2s, <1s, 95% success rate)
+- [X] T083 Performance testing: 100 consecutive operations (SC-002)
+- [X] T084 Final code review against constitution principles
 
 ---
 

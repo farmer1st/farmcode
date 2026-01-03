@@ -39,7 +39,7 @@ class JSONFormatter(logging.Formatter):
 
         # Add context from extra fields
         if hasattr(record, "context"):
-            log_data["context"] = getattr(record, "context")
+            log_data["context"] = record.context
 
         # Add exception info if present
         if record.exc_info:
