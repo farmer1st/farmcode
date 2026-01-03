@@ -1,21 +1,18 @@
 <!--
 Sync Impact Report:
-- Version change: 1.3.0 → 1.4.0
+- Version change: 1.4.0 → 1.5.0
 - Modified principles: None
 - Added sections:
-  * Principle XI: Documentation and User Journeys (new principle)
+  * Principle XII: Continuous Integration and Delivery (new principle)
 - Removed sections: None
 - Templates requiring updates:
-  ✅ plan-template.md - Must include user journey identification
-  ✅ spec-template.md - Must document user journeys with unique IDs
-  ✅ tasks-template.md - E2E test tasks must reference journey IDs
-  ✅ All command files reviewed - no updates needed
+  ✅ All templates reviewed - no updates needed (CI/CD is infrastructure)
 - Follow-up TODOs:
-  * Create docs/user-journeys/ directory structure
-  * Add pytest journey markers to pyproject.toml
-  * Document existing user journeys for GitHub Integration Core (ORC-001 through ORC-005)
-- Rationale for MINOR bump: Added new principle (Documentation and User Journeys) with journey tracking requirements
+  * Ensure .github/workflows/ exists in all repos
+  * Enable branch protection rules requiring CI to pass
+- Rationale for MINOR bump: Added new principle (CI/CD) with automation requirements
 Previous changes:
+- 1.3.0 → 1.4.0: Added Principle XI (Documentation and User Journeys)
 - 1.2.1 → 1.3.0: Added Principle X (Security-First Development)
 - 1.2.0 → 1.2.1: Added deployment strategy (local-first with AWS/K8s option)
 - 1.1.3 → 1.2.0: Added Principle IX (Thin Client Architecture)
@@ -448,6 +445,77 @@ Feature 001: GitHub Integration Core
 
 **Rationale**: User journeys provide end-to-end validation that the system works as users expect. Mapping tests to journeys ensures comprehensive coverage and makes test reports meaningful to stakeholders. Documentation prevents knowledge silos and enables new contributors to onboard quickly. For FarmCode orchestrator, user journeys represent the 8-phase SDLC workflow that is the core value proposition. Documenting at the feature/story level (not task level) ensures docs stay current without creating update burden for every small change.
 
+### XII. Continuous Integration and Delivery
+
+**Rule**: All code changes MUST pass automated quality gates before merge. Releases follow semantic versioning with automated changelog generation.
+
+**CI Pipeline Requirements**:
+- **Trigger**: On every PR and push to main branch
+- **Required Checks** (all must pass):
+  - Linting (ruff for Python, ESLint for TypeScript)
+  - Type checking (mypy --strict for Python, tsc for TypeScript)
+  - Unit tests with coverage threshold (minimum 80%)
+  - Contract/integration tests (mocked external dependencies)
+- **Optional Checks**:
+  - E2E tests (may require secrets, can be skipped in CI)
+  - Performance benchmarks (for critical paths)
+
+**Security Scanning**:
+- **CodeQL**: Enabled for all repositories
+  - Runs on PR and push to main
+  - Weekly scheduled scan (catch new vulnerability patterns)
+  - Security-extended query suite
+- **Dependabot**: Enabled for dependency updates
+  - Automated PRs for security patches
+  - Weekly check for outdated dependencies
+
+**Branch Protection Rules**:
+- Main branch protected (no direct pushes)
+- Required reviews: At least 1 approval
+- Required status checks: CI must pass
+- Dismiss stale reviews on new commits
+- Require branches to be up-to-date before merge
+
+**Release Workflow**:
+- **Versioning**: Semantic versioning (vMAJOR.MINOR.PATCH)
+  - MAJOR: Breaking changes (API incompatibility)
+  - MINOR: New features (backward compatible)
+  - PATCH: Bug fixes (backward compatible)
+- **Trigger**: Push of version tag (v*)
+- **Actions**:
+  - Generate changelog from commits since last tag
+  - Create GitHub Release with changelog
+  - Mark pre-release for -alpha, -beta, -rc tags
+
+**Tagging Convention**:
+```
+v1.0.0        # Stable release
+v1.1.0        # Feature release
+v1.1.1        # Bug fix release
+v2.0.0-alpha  # Pre-release (alpha)
+v2.0.0-beta.1 # Pre-release (beta, iteration 1)
+v2.0.0-rc.1   # Release candidate
+```
+
+**Workflow Files**:
+```
+.github/workflows/
+├── ci.yml        # Lint, typecheck, test on PR/push
+├── codeql.yml    # Security scanning
+└── release.yml   # Automated releases on tag
+```
+
+**CI Best Practices**:
+- ✅ Cache dependencies (uv, pnpm) for faster builds
+- ✅ Run jobs in parallel where possible
+- ✅ Fail fast on first error
+- ✅ Use matrix builds for multi-version testing (when needed)
+- ✅ Keep CI config DRY with reusable workflows
+- ❌ Don't skip CI checks (even for "small" changes)
+- ❌ Don't store secrets in workflow files (use GitHub Secrets)
+
+**Rationale**: Automated CI/CD ensures consistent quality, catches issues early, and enables confident releases. CodeQL provides ongoing security analysis. Semantic versioning with automated releases reduces manual overhead and provides clear communication about changes.
+
 ## Monorepo Structure
 
 **Repository Layout**:
@@ -632,4 +700,4 @@ farmcode/
 
 **Guidance Document**: See `.specify/templates/` for implementation guidance and workflow execution details.
 
-**Version**: 1.4.0 | **Ratified**: 2026-01-02 | **Last Amended**: 2026-01-02
+**Version**: 1.5.0 | **Ratified**: 2026-01-02 | **Last Amended**: 2026-01-03
