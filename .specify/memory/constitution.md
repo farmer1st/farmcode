@@ -1,16 +1,17 @@
 <!--
 Sync Impact Report:
-- Version change: 1.6.2 → 1.6.3
+- Version change: 1.6.3 → 1.6.4
 - Modified principles: None
-- Added sections: Comprehensive API Documentation Standards in Quality Standards
+- Added sections: Redocly CLI tooling and API-first workflow in API Documentation Standards
 - Removed sections: None
 - Templates requiring updates:
-  - None (documentation standards, not template changes)
+  - speckit.plan.md - should generate openapi.yaml for REST API features
 - Follow-up TODOs:
-  - Add docs/api/ directory structure to repos
-  - Ensure FastAPI apps have /docs and /redoc enabled
-- Rationale for PATCH bump: Consolidated and expanded API documentation requirements (clarification)
+  - Add redocly lint to CI workflow when first REST API is added
+  - Add redocly build-docs to release workflow
+- Rationale for PATCH bump: Added specific tooling (Redocly) for existing API docs requirement (clarification)
 Previous changes:
+- 1.6.2 → 1.6.3: Added comprehensive API Documentation Standards in Quality Standards
 - 1.6.1 → 1.6.2: Added Service Interface requirement in Documentation Requirements
 - 1.6.0 → 1.6.1: Reverted to manual tagging (release-please blocked by org)
 - 1.5.2 → 1.6.0: Added conventional commits requirement
@@ -718,17 +719,45 @@ farmcode/
 
 All APIs and public interfaces MUST be documented for discoverability and usability.
 
-- **REST APIs (FastAPI)**:
-  - OpenAPI spec auto-generated via FastAPI
-  - Swagger UI available at `/docs` endpoint
-  - ReDoc available at `/redoc` endpoint (preferred for reading)
-  - Export OpenAPI spec to `docs/api/openapi.yaml` on each release
-  - All endpoints MUST have:
-    - Description (what it does)
-    - Request/response schemas (Pydantic models)
-    - Example values
-    - Error response documentation
-    - Authentication requirements noted
+- **REST APIs (FastAPI)** - API-First Approach:
+
+  **Tooling**: Redocly CLI for linting, preview, and static doc generation
+  ```bash
+  # Install (or use npx for zero-install)
+  npm install -g @redocly/cli
+
+  # Key commands
+  npx @redocly/cli lint docs/api/openapi.yaml        # Validate spec
+  npx @redocly/cli preview-docs docs/api/openapi.yaml # Live preview
+  npx @redocly/cli build-docs docs/api/openapi.yaml -o docs/api/index.html # Static HTML
+  ```
+
+  **Workflow** (spec is source of truth):
+  1. Write `docs/api/openapi.yaml` during `/speckit.plan` phase
+  2. Validate with `redocly lint` in CI (blocks merge if invalid)
+  3. Generate static docs with `redocly build-docs`
+  4. Implement FastAPI endpoints to match spec
+  5. Runtime `/docs` and `/redoc` for development
+
+  **File Structure**:
+  ```
+  docs/api/
+  ├── openapi.yaml    # Source of truth (version controlled)
+  ├── index.html      # Static ReDoc (generated, viewable offline)
+  └── redocly.yaml    # Redocly configuration (optional)
+  ```
+
+  **CI Integration** (required):
+  - Lint OpenAPI spec on every PR
+  - Build static docs on merge to main
+  - Deploy to GitHub Pages on release (optional)
+
+  **Spec Requirements** - All endpoints MUST have:
+  - Description (what it does)
+  - Request/response schemas (Pydantic models)
+  - Example values
+  - Error response documentation
+  - Authentication requirements noted
 
 - **Python Libraries** (non-REST services):
   - **Google-style docstrings** for all public functions, classes, methods:
@@ -820,4 +849,4 @@ All APIs and public interfaces MUST be documented for discoverability and usabil
 
 **Guidance Document**: See `.specify/templates/` for implementation guidance and workflow execution details.
 
-**Version**: 1.6.3 | **Ratified**: 2026-01-02 | **Last Amended**: 2026-01-03
+**Version**: 1.6.4 | **Ratified**: 2026-01-02 | **Last Amended**: 2026-01-03
