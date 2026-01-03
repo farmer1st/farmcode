@@ -1,32 +1,69 @@
 # farmcode Development Guidelines
 
-Auto-generated from all feature plans. Last updated: 2026-01-02
+Auto-generated from all feature plans. Last updated: 2026-01-03
 
 ## Active Technologies
-- Python 3.11+ + subprocess (stdlib), pathlib (stdlib), Pydantic v2 (validation) (002-git-worktree-manager)
-- N/A (operates on filesystem via git) (002-git-worktree-manager)
 
-- Python 3.11+ + PyGithub (GitHub API client), python-dotenv (secrets), python-jose (JWT for GitHub App auth) (001-github-integration-core)
+- **001-github-integration-core**: Python 3.11+ + PyGithub, python-dotenv, python-jose
+- **002-git-worktree-manager**: Python 3.11+ + subprocess, pathlib, Pydantic v2
+- **003-orchestrator-state-machine**: Python 3.11+ + Pydantic v2, subprocess (CLI runner), JSON state persistence
 
 ## Project Structure
 
 ```text
 src/
+  github_integration/    # GitHub API client and service
+  worktree_manager/      # Git worktree management
+  orchestrator/          # SDLC workflow state machine
 tests/
+  unit/                  # Unit tests
+  integration/           # Integration tests
+  contract/              # Contract tests
+  e2e/                   # End-to-end tests
 ```
 
 ## Commands
 
-cd src [ONLY COMMANDS FOR ACTIVE TECHNOLOGIES][ONLY COMMANDS FOR ACTIVE TECHNOLOGIES] pytest [ONLY COMMANDS FOR ACTIVE TECHNOLOGIES][ONLY COMMANDS FOR ACTIVE TECHNOLOGIES] ruff check .
+```bash
+# Run tests
+uv run pytest
+
+# Run linting
+uv run ruff check .
+
+# Run type checking
+uv run mypy src/
+```
 
 ## Code Style
 
-Python 3.11+: Follow standard conventions
+Python 3.11+: Follow standard conventions with Google-style docstrings
+
+## Modules
+
+### orchestrator
+
+State machine orchestration for SDLC Phases 1-2. See `src/orchestrator/README.md` for details.
+
+**Key exports**:
+- `OrchestratorService` - Main facade
+- `WorkflowState` - State enum (IDLE, PHASE_1, PHASE_2, GATE_1, DONE)
+- `Phase1Request`, `Phase2Config` - Configuration models
+- `AgentRunner`, `ClaudeCLIRunner` - Agent dispatch
+
+**Usage**:
+```python
+from orchestrator import OrchestratorService, Phase1Request
+
+orchestrator = OrchestratorService(repo_path, github_service, worktree_service)
+result = orchestrator.execute_phase_1(Phase1Request(feature_description="..."))
+```
 
 ## Recent Changes
-- 002-git-worktree-manager: Added Python 3.11+ + subprocess (stdlib), pathlib (stdlib), Pydantic v2 (validation)
 
-- 001-github-integration-core: Added Python 3.11+ + PyGithub (GitHub API client), python-dotenv (secrets), python-jose (JWT for GitHub App auth)
+- 003-orchestrator-state-machine: State machine with phases 1-2, agent dispatch, label sync
+- 002-git-worktree-manager: Git worktree management
+- 001-github-integration-core: GitHub API integration
 
 <!-- MANUAL ADDITIONS START -->
 <!-- MANUAL ADDITIONS END -->
