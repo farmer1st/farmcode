@@ -1,17 +1,17 @@
 <!--
 Sync Impact Report:
-- Version change: 1.5.2 → 1.6.0
-- Modified principles: VII (Versioning and Change Control)
-- Added sections:
-  * Conventional Commits (REQUIRED) - format, types, examples
-- Removed sections: None
+- Version change: 1.6.0 → 1.6.1
+- Modified principles: XII (Continuous Integration and Delivery)
+- Added sections: None
+- Removed sections:
+  * release-please references (org permissions blocked it)
 - Templates requiring updates:
   ✅ All templates reviewed - no updates needed
-- Follow-up TODOs:
-  * Consider adding commitlint to enforce conventional commits
-- Rationale for MINOR bump: Added new requirement (conventional commits)
+- Follow-up TODOs: None
+- Rationale for PATCH bump: Reverted to manual tagging (release-please blocked by org)
 Previous changes:
-- 1.5.1 → 1.5.2: Added release-please for automated releases
+- 1.5.2 → 1.6.0: Added conventional commits requirement
+- 1.5.1 → 1.5.2: Added release-please (later removed)
 - 1.5.0 → 1.5.1: Made E2E tests mandatory in CI
 - 1.4.0 → 1.5.0: Added Principle XII (Continuous Integration and Delivery)
 - 1.3.0 → 1.4.0: Added Principle XI (Documentation and User Journeys)
@@ -507,13 +507,17 @@ Feature 001: GitHub Integration Core
 - Dismiss stale reviews on new commits
 - Require branches to be up-to-date before merge
 
-**Release Workflow** (release-please):
+**Release Workflow** (manual tagging):
 - **Versioning**: Semantic versioning (vMAJOR.MINOR.PATCH)
-- **How it works**:
-  - On merge to main, release-please creates/updates a Release PR
-  - Release PR accumulates changes with auto-generated changelog
-  - Merge the Release PR to cut a release (creates tag + GitHub Release)
-- **Version bumps**: Determined by conventional commits (see Principle VII)
+- **How to release**:
+  ```bash
+  git tag v1.0.0
+  git push origin v1.0.0
+  ```
+- **Workflow triggers on tag push**:
+  - Generates changelog from commits since last tag
+  - Creates GitHub Release with changelog
+  - Marks pre-release for -alpha, -beta, -rc tags
 
 **Tagging Convention**:
 ```
@@ -528,9 +532,9 @@ v2.0.0-rc.1   # Release candidate
 **Workflow Files**:
 ```
 .github/workflows/
-├── ci.yml             # Lint, typecheck, test on PR/push
-├── codeql.yml         # Security scanning
-└── release-please.yml # Auto-creates Release PRs on merge to main
+├── ci.yml      # Lint, typecheck, test on PR/push
+├── codeql.yml  # Security scanning
+└── release.yml # Creates GitHub Release on tag push
 ```
 
 **CI Best Practices**:
@@ -728,4 +732,4 @@ farmcode/
 
 **Guidance Document**: See `.specify/templates/` for implementation guidance and workflow execution details.
 
-**Version**: 1.6.0 | **Ratified**: 2026-01-02 | **Last Amended**: 2026-01-03
+**Version**: 1.6.1 | **Ratified**: 2026-01-02 | **Last Amended**: 2026-01-03
