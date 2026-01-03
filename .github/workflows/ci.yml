@@ -97,7 +97,7 @@ jobs:
       - name: Check for credentials
         id: check-creds
         run: |
-          if [ -n "${{ secrets.GITHUB_APP_PRIVATE_KEY }}" ]; then
+          if [ -n "${{ secrets.GH_APP_PRIVATE_KEY }}" ]; then
             echo "has_creds=true" >> $GITHUB_OUTPUT
           else
             echo "has_creds=false" >> $GITHUB_OUTPUT
@@ -123,7 +123,7 @@ jobs:
         if: steps.check-creds.outputs.has_creds == 'true'
         run: |
           mkdir -p .keys
-          echo "${{ secrets.GITHUB_APP_PRIVATE_KEY }}" > .keys/orchestrator.pem
+          echo "${{ secrets.GH_APP_PRIVATE_KEY }}" > .keys/orchestrator.pem
           chmod 600 .keys/orchestrator.pem
 
       - name: Run contract tests
@@ -136,4 +136,4 @@ jobs:
 
       - name: Skip notice
         if: steps.check-creds.outputs.has_creds == 'false'
-        run: echo "⚠️ E2E tests skipped - GITHUB_APP_PRIVATE_KEY secret not configured"
+        run: echo "⚠️ E2E tests skipped - GH_APP_PRIVATE_KEY secret not configured"
