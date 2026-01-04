@@ -143,4 +143,3 @@ class TestEscalationGitHubIntegration:
 
         # Should not have context line if empty
         assert "**Context:**" not in comment
-

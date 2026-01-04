@@ -30,11 +30,16 @@ tests/
 # Run tests
 uv run pytest
 
-# Run linting
-uv run ruff check .
+# Run linting (must pass BOTH for CI)
+uv run ruff check src/ tests/
+uv run ruff format --check src/ tests/
 
 # Run type checking
-uv run mypy src/
+uv run mypy src/ --strict
+
+# Auto-fix lint issues
+uv run ruff check --fix src/ tests/
+uv run ruff format src/ tests/
 ```
 
 ## Code Style

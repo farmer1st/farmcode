@@ -129,9 +129,7 @@ class KnowledgeRouterService:
             RoutingError: If validation outcome is not ESCALATE.
         """
         if validation.outcome != ValidationOutcome.ESCALATE:
-            raise RoutingError(
-                f"Cannot escalate answer with outcome {validation.outcome}"
-            )
+            raise RoutingError(f"Cannot escalate answer with outcome {validation.outcome}")
 
         return self._escalation_handler.create_escalation(question, validation)
 

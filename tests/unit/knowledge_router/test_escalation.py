@@ -383,4 +383,3 @@ class TestEscalationHandler:
         assert result.needs_reroute is True
         assert result.updated_question is not None
         assert "Data is PII, must comply with GDPR." in result.updated_question.context
-

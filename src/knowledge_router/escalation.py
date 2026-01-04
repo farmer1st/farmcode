@@ -141,8 +141,7 @@ class EscalationHandler:
         new_context = original.context
         if new_context:
             new_context = (
-                f"{new_context}\n\n"
-                f"Additional context from human:\n{response.additional_context}"
+                f"{new_context}\n\nAdditional context from human:\n{response.additional_context}"
             )
         else:
             new_context = f"Additional context from human:\n{response.additional_context}"

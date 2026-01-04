@@ -97,9 +97,11 @@ class AgentDispatcher:
         # Build CLI command
         cmd = [
             self._claude_path,
-            "--model", model,
+            "--model",
+            model,
             "--print",
-            "-p", prompt,
+            "-p",
+            prompt,
         ]
 
         try:
@@ -113,9 +115,7 @@ class AgentDispatcher:
             if result.returncode != 0:
                 handle.status = AgentStatus.FAILED
                 handle.completed_at = datetime.utcnow()
-                raise AgentDispatchError(
-                    f"Agent {agent_id} failed: {result.stderr}"
-                )
+                raise AgentDispatchError(f"Agent {agent_id} failed: {result.stderr}")
 
             handle.status = AgentStatus.COMPLETED
             handle.completed_at = datetime.utcnow()
@@ -128,9 +128,7 @@ class AgentDispatcher:
         except subprocess.TimeoutExpired:
             handle.status = AgentStatus.TIMEOUT
             handle.completed_at = datetime.utcnow()
-            raise AgentTimeoutError(
-                f"Agent {agent_id} timed out after {timeout}s"
-            ) from None
+            raise AgentTimeoutError(f"Agent {agent_id} timed out after {timeout}s") from None
 
     def parse_answer(
         self,
@@ -150,9 +148,7 @@ class AgentDispatcher:
             AgentResponseError: If response cannot be parsed.
         """
         if handle.status != AgentStatus.COMPLETED:
-            raise AgentResponseError(
-                f"Cannot parse answer from agent with status {handle.status}"
-            )
+            raise AgentResponseError(f"Cannot parse answer from agent with status {handle.status}")
 
         raw_response = getattr(handle, "_raw_response", None)
         if not raw_response:
@@ -208,9 +204,7 @@ class AgentDispatcher:
 
         options_section = ""
         if question.options:
-            options_section = "Options:\n" + "\n".join(
-                f"  - {opt}" for opt in question.options
-            )
+            options_section = "Options:\n" + "\n".join(f"  - {opt}" for opt in question.options)
 
         return KNOWLEDGE_AGENT_PROMPT.format(
             agent_name=agent_name,
@@ -243,6 +237,7 @@ class AgentDispatcher:
 
         # Try to find JSON in code blocks
         import re
+
         json_pattern = r"```(?:json)?\s*(\{.*?\})\s*```"
         match = re.search(json_pattern, text, re.DOTALL)
         if match:

@@ -27,15 +27,17 @@ class TestQALoggingE2E:
         from knowledge_router.validator import ConfidenceValidator
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            config = ConfigLoader.load_from_dict({
-                "defaults": {"confidence_threshold": 80},
-                "agents": {
-                    "architect": {
-                        "name": "@duc",
-                        "topics": ["authentication"],
+            config = ConfigLoader.load_from_dict(
+                {
+                    "defaults": {"confidence_threshold": 80},
+                    "agents": {
+                        "architect": {
+                            "name": "@duc",
+                            "topics": ["authentication"],
+                        },
                     },
-                },
-            })
+                }
+            )
 
             validator = ConfidenceValidator(config)
             logger = QALogger(log_dir=tmpdir)
@@ -94,15 +96,17 @@ class TestQALoggingE2E:
         from knowledge_router.validator import ConfidenceValidator
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            config = ConfigLoader.load_from_dict({
-                "defaults": {"confidence_threshold": 80},
-                "agents": {
-                    "architect": {
-                        "name": "@duc",
-                        "topics": ["security"],
+            config = ConfigLoader.load_from_dict(
+                {
+                    "defaults": {"confidence_threshold": 80},
+                    "agents": {
+                        "architect": {
+                            "name": "@duc",
+                            "topics": ["security"],
+                        },
                     },
-                },
-            })
+                }
+            )
 
             validator = ConfidenceValidator(config)
             escalation_handler = EscalationHandler(config)
@@ -181,15 +185,17 @@ class TestQALoggingE2E:
         from knowledge_router.validator import ConfidenceValidator
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            config = ConfigLoader.load_from_dict({
-                "defaults": {"confidence_threshold": 80},
-                "agents": {
-                    "architect": {
-                        "name": "@duc",
-                        "topics": ["caching"],
+            config = ConfigLoader.load_from_dict(
+                {
+                    "defaults": {"confidence_threshold": 80},
+                    "agents": {
+                        "architect": {
+                            "name": "@duc",
+                            "topics": ["caching"],
+                        },
                     },
-                },
-            })
+                }
+            )
 
             validator = ConfidenceValidator(config)
             escalation_handler = EscalationHandler(config)
@@ -227,8 +233,7 @@ class TestQALoggingE2E:
                 escalation_id=escalation.id,
                 action=HumanAction.ADD_CONTEXT,
                 additional_context=(
-                    "We expect 10K concurrent users with sub-100ms "
-                    "latency requirements."
+                    "We expect 10K concurrent users with sub-100ms latency requirements."
                 ),
                 responder="farmer1st",
                 github_comment_id=12345,
@@ -301,9 +306,11 @@ class TestQALoggingE2E:
         from knowledge_router.validator import ConfidenceValidator
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            config = ConfigLoader.load_from_dict({
-                "defaults": {"confidence_threshold": 80},
-            })
+            config = ConfigLoader.load_from_dict(
+                {
+                    "defaults": {"confidence_threshold": 80},
+                }
+            )
 
             validator = ConfidenceValidator(config)
             logger = QALogger(log_dir=tmpdir)
@@ -347,4 +354,3 @@ class TestQALoggingE2E:
             assert len(logger.get_logs_for_feature("005-user-auth")) == 1
             assert len(logger.get_logs_for_feature("006-payments")) == 1
             assert len(logger.get_logs_for_feature("007-notifications")) == 1
-

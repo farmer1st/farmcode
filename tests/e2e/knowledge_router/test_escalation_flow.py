@@ -24,15 +24,17 @@ class TestEscalationFlowE2E:
         from knowledge_router.escalation import EscalationHandler
         from knowledge_router.validator import ConfidenceValidator
 
-        config = ConfigLoader.load_from_dict({
-            "defaults": {"confidence_threshold": 80},
-            "agents": {
-                "architect": {
-                    "name": "@duc",
-                    "topics": ["security"],
+        config = ConfigLoader.load_from_dict(
+            {
+                "defaults": {"confidence_threshold": 80},
+                "agents": {
+                    "architect": {
+                        "name": "@duc",
+                        "topics": ["security"],
+                    },
                 },
-            },
-        })
+            }
+        )
 
         validator = ConfidenceValidator(config)
         escalation_handler = EscalationHandler(config)
@@ -73,15 +75,17 @@ class TestEscalationFlowE2E:
         from knowledge_router.escalation import EscalationHandler
         from knowledge_router.models import EscalationRequest
 
-        config = ConfigLoader.load_from_dict({
-            "defaults": {"confidence_threshold": 80},
-            "agents": {
-                "architect": {
-                    "name": "@duc",
-                    "topics": ["authentication"],
+        config = ConfigLoader.load_from_dict(
+            {
+                "defaults": {"confidence_threshold": 80},
+                "agents": {
+                    "architect": {
+                        "name": "@duc",
+                        "topics": ["authentication"],
+                    },
                 },
-            },
-        })
+            }
+        )
 
         escalation_handler = EscalationHandler(config)
 
@@ -129,15 +133,17 @@ class TestEscalationFlowE2E:
         from knowledge_router.escalation import EscalationHandler
         from knowledge_router.models import EscalationRequest
 
-        config = ConfigLoader.load_from_dict({
-            "defaults": {"confidence_threshold": 80},
-            "agents": {
-                "architect": {
-                    "name": "@duc",
-                    "topics": ["database"],
+        config = ConfigLoader.load_from_dict(
+            {
+                "defaults": {"confidence_threshold": 80},
+                "agents": {
+                    "architect": {
+                        "name": "@duc",
+                        "topics": ["database"],
+                    },
                 },
-            },
-        })
+            }
+        )
 
         escalation_handler = EscalationHandler(config)
 
@@ -172,8 +178,7 @@ class TestEscalationFlowE2E:
             escalation_id=escalation.id,
             action=HumanAction.CORRECT,
             corrected_answer=(
-                "Use Alembic for database migrations with version control "
-                "and rollback support."
+                "Use Alembic for database migrations with version control and rollback support."
             ),
             responder="farmer1st",
             github_comment_id=12346,
@@ -191,15 +196,17 @@ class TestEscalationFlowE2E:
         from knowledge_router.escalation import EscalationHandler
         from knowledge_router.models import EscalationRequest
 
-        config = ConfigLoader.load_from_dict({
-            "defaults": {"confidence_threshold": 80},
-            "agents": {
-                "architect": {
-                    "name": "@duc",
-                    "topics": ["caching"],
+        config = ConfigLoader.load_from_dict(
+            {
+                "defaults": {"confidence_threshold": 80},
+                "agents": {
+                    "architect": {
+                        "name": "@duc",
+                        "topics": ["caching"],
+                    },
                 },
-            },
-        })
+            }
+        )
 
         escalation_handler = EscalationHandler(config)
 
@@ -255,21 +262,23 @@ class TestEscalationFlowE2E:
         from knowledge_router.escalation import EscalationHandler
         from knowledge_router.validator import ConfidenceValidator
 
-        config = ConfigLoader.load_from_dict({
-            "defaults": {"confidence_threshold": 80},
-            "agents": {
-                "architect": {
-                    "name": "@duc",
-                    "topics": ["security"],
+        config = ConfigLoader.load_from_dict(
+            {
+                "defaults": {"confidence_threshold": 80},
+                "agents": {
+                    "architect": {
+                        "name": "@duc",
+                        "topics": ["security"],
+                    },
                 },
-            },
-            "overrides": {
-                "security": {
-                    "agent": "architect",
-                    "confidence_threshold": 95,  # Higher threshold for security
+                "overrides": {
+                    "security": {
+                        "agent": "architect",
+                        "confidence_threshold": 95,  # Higher threshold for security
+                    },
                 },
-            },
-        })
+            }
+        )
 
         validator = ConfidenceValidator(config)
         escalation_handler = EscalationHandler(config)
@@ -300,4 +309,3 @@ class TestEscalationFlowE2E:
 
         escalation = escalation_handler.create_escalation(question, validation)
         assert escalation.threshold_used == 95
-

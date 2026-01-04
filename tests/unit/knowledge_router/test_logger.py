@@ -523,4 +523,3 @@ class TestExchangeLinking:
             assert chain[0]["id"] == ids[0]  # Original
             assert chain[1]["id"] == ids[1]  # First reroute
             assert chain[2]["id"] == ids[2]  # Second reroute
-

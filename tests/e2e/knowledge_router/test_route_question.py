@@ -29,16 +29,18 @@ class TestRouteQuestionE2E:
         )
 
         # Load config from sample file
-        config = ConfigLoader.load_from_dict({
-            "defaults": {"confidence_threshold": 80, "model": "sonnet"},
-            "agents": {
-                "architect": {
-                    "name": "@duc",
-                    "topics": ["authentication", "database", "architecture"],
-                    "model": "opus",
+        config = ConfigLoader.load_from_dict(
+            {
+                "defaults": {"confidence_threshold": 80, "model": "sonnet"},
+                "agents": {
+                    "architect": {
+                        "name": "@duc",
+                        "topics": ["authentication", "database", "architecture"],
+                        "model": "opus",
+                    },
                 },
-            },
-        })
+            }
+        )
 
         router = KnowledgeRouterService(config)
 
@@ -64,21 +66,23 @@ class TestRouteQuestionE2E:
         """Test routing with topic override goes to human."""
         from knowledge_router.router import KnowledgeRouterService
 
-        config = ConfigLoader.load_from_dict({
-            "defaults": {"confidence_threshold": 80},
-            "agents": {
-                "architect": {
-                    "name": "@duc",
-                    "topics": ["security"],
+        config = ConfigLoader.load_from_dict(
+            {
+                "defaults": {"confidence_threshold": 80},
+                "agents": {
+                    "architect": {
+                        "name": "@duc",
+                        "topics": ["security"],
+                    },
                 },
-            },
-            "overrides": {
-                "security": {
-                    "agent": "human",
-                    "confidence_threshold": 95,
+                "overrides": {
+                    "security": {
+                        "agent": "human",
+                        "confidence_threshold": 95,
+                    },
                 },
-            },
-        })
+            }
+        )
 
         router = KnowledgeRouterService(config)
 

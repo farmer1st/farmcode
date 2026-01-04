@@ -21,15 +21,17 @@ class TestConfidenceGateE2E:
         """Test end-to-end: high confidence answer is accepted."""
         from knowledge_router.validator import ConfidenceValidator
 
-        config = ConfigLoader.load_from_dict({
-            "defaults": {"confidence_threshold": 80},
-            "agents": {
-                "architect": {
-                    "name": "@duc",
-                    "topics": ["authentication"],
+        config = ConfigLoader.load_from_dict(
+            {
+                "defaults": {"confidence_threshold": 80},
+                "agents": {
+                    "architect": {
+                        "name": "@duc",
+                        "topics": ["authentication"],
+                    },
                 },
-            },
-        })
+            }
+        )
 
         validator = ConfidenceValidator(config)
 
@@ -60,15 +62,17 @@ class TestConfidenceGateE2E:
         """Test end-to-end: low confidence answer triggers escalation."""
         from knowledge_router.validator import ConfidenceValidator
 
-        config = ConfigLoader.load_from_dict({
-            "defaults": {"confidence_threshold": 80},
-            "agents": {
-                "architect": {
-                    "name": "@duc",
-                    "topics": ["caching"],
+        config = ConfigLoader.load_from_dict(
+            {
+                "defaults": {"confidence_threshold": 80},
+                "agents": {
+                    "architect": {
+                        "name": "@duc",
+                        "topics": ["caching"],
+                    },
                 },
-            },
-        })
+            }
+        )
 
         validator = ConfidenceValidator(config)
 
@@ -101,21 +105,23 @@ class TestConfidenceGateE2E:
         """Test end-to-end: security topic with higher threshold."""
         from knowledge_router.validator import ConfidenceValidator
 
-        config = ConfigLoader.load_from_dict({
-            "defaults": {"confidence_threshold": 80},
-            "agents": {
-                "architect": {
-                    "name": "@duc",
-                    "topics": ["security"],
+        config = ConfigLoader.load_from_dict(
+            {
+                "defaults": {"confidence_threshold": 80},
+                "agents": {
+                    "architect": {
+                        "name": "@duc",
+                        "topics": ["security"],
+                    },
                 },
-            },
-            "overrides": {
-                "security": {
-                    "agent": "architect",
-                    "confidence_threshold": 95,
+                "overrides": {
+                    "security": {
+                        "agent": "architect",
+                        "confidence_threshold": 95,
+                    },
                 },
-            },
-        })
+            }
+        )
 
         validator = ConfidenceValidator(config)
 

@@ -98,9 +98,7 @@ class Question(BaseModel):
             description="Question topic for routing (lowercase, alphanumeric with underscores)",
         ),
     ]
-    suggested_target: QuestionTarget = Field(
-        description="@baron's suggested target agent"
-    )
+    suggested_target: QuestionTarget = Field(description="@baron's suggested target agent")
     question: Annotated[
         str,
         Field(
@@ -191,9 +189,7 @@ class AnswerValidationResult(BaseModel):
 
     outcome: ValidationOutcome
     answer: Answer
-    threshold_used: int = Field(
-        description="Confidence threshold that was applied"
-    )
+    threshold_used: int = Field(description="Confidence threshold that was applied")
     threshold_source: str = Field(
         description="Where threshold came from (default, topic_override, etc.)"
     )
@@ -344,9 +340,7 @@ class QALogEntry(BaseModel):
     feature_id: str = Field(description="Feature this exchange belongs to")
     question: Question = Field(description="The original question")
     answer: Answer = Field(description="The agent's answer")
-    validation_result: AnswerValidationResult = Field(
-        description="Result of confidence validation"
-    )
+    validation_result: AnswerValidationResult = Field(description="Result of confidence validation")
     escalation: "EscalationRequest | None" = Field(
         default=None,
         description="Escalation if answer was escalated",
@@ -355,15 +349,9 @@ class QALogEntry(BaseModel):
         default=None,
         description="Human response if escalated",
     )
-    final_answer: Answer = Field(
-        description="Final answer after any human intervention"
-    )
-    routing_decision: str = Field(
-        description="Which agent was chosen and why"
-    )
-    total_duration_seconds: float = Field(
-        description="Total time from question to final answer"
-    )
+    final_answer: Answer = Field(description="Final answer after any human intervention")
+    routing_decision: str = Field(description="Which agent was chosen and why")
+    total_duration_seconds: float = Field(description="Total time from question to final answer")
     parent_id: str | None = Field(
         default=None,
         description="ID of parent log entry for re-routed questions",
