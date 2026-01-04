@@ -198,10 +198,29 @@ Examples of foundational tasks (adjust based on your project):
 
 - [ ] TXXX Update docs/user-journeys/JOURNEYS.md with all new journeys
 
-### Module Documentation
+### Documentation (REQUIRED per Constitution Principle XI)
 
-- [ ] TXXX [P] Create/update module README in src/[module]/README.md
-- [ ] TXXX [P] Documentation updates in docs/
+> **NOTE**: Documentation is NOT optional. Missing docs blocks PR merge.
+
+**Module Documentation** (REQUIRED for each new module):
+- [ ] TXXX [P] Create/update src/[module]/README.md with:
+  - Purpose, quick start, API reference, usage examples
+- [ ] TXXX [P] Create docs/modules/[module-name].md with:
+  - Extended documentation, architecture details, integration guide
+
+**Architecture Documentation** (REQUIRED when adding new components):
+- [ ] TXXX Update docs/architecture/system-overview.md if new module added
+- [ ] TXXX Update docs/architecture/module-interactions.md if module integrates with others
+- [ ] TXXX [P] Add/update diagrams in docs/architecture/diagrams/
+
+**Configuration Documentation** (if feature has configurable options):
+- [ ] TXXX Update docs/configuration/environment-variables.md with new env vars
+- [ ] TXXX Document config files (YAML, JSON) in docs/configuration/
+
+**Infrastructure Documentation** (first feature only - verify exists):
+- [ ] TXXX Verify docs/README.md exists (docs index)
+- [ ] TXXX Verify docs/getting-started/ exists (developer onboarding)
+- [ ] TXXX Verify docs/testing/ exists (testing guide)
 
 ### Quality & Validation
 
@@ -304,4 +323,17 @@ With multiple developers:
 - Commit after each task or logical group
 - Stop at any checkpoint to validate story independently
 - **User journey doc is part of each story's "definition of done" - NOT a polish task**
+- **Documentation in docs/ is REQUIRED - not optional polish work**
 - Avoid: vague tasks, same file conflicts, cross-story dependencies that break independence
+
+## Documentation Checklist
+
+Before marking a feature complete, verify:
+
+- [ ] src/[module]/README.md exists with quick start and API reference
+- [ ] docs/modules/[module-name].md exists with extended documentation
+- [ ] docs/architecture/ updated if new components were added
+- [ ] docs/user-journeys/ has journey doc for each user story
+- [ ] docs/user-journeys/JOURNEYS.md updated with new journeys
+- [ ] docs/configuration/ updated if new config options were added
+- [ ] All docs link to each other appropriately
