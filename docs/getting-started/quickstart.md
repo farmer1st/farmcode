@@ -5,8 +5,8 @@ Get Farmer Code running in 5 minutes.
 ## TL;DR
 
 ```bash
-git clone https://github.com/farmer1st/farmcode.git
-cd farmcode
+git clone https://github.com/farmer1st/farmer-code.git
+cd farmer-code
 uv sync
 uv run pytest tests/unit/  # Unit tests (no credentials needed)
 ```
@@ -16,8 +16,8 @@ uv run pytest tests/unit/  # Unit tests (no credentials needed)
 ### 1. Clone & Install
 
 ```bash
-git clone https://github.com/farmer1st/farmcode.git
-cd farmcode
+git clone https://github.com/farmer1st/farmer-code.git
+cd farmer-code
 uv sync
 ```
 

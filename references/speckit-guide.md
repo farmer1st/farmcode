@@ -58,7 +58,7 @@ Roadmap (strategic plan, quarters/months)
 ### Repository Structure
 
 ```
-farmcode/
+farmer-code/
 ├── .specify/                    # SpecKit infrastructure
 │   ├── memory/
 │   │   └── constitution.md      # Project standards (v1.4.0)

@@ -24,8 +24,8 @@ Before you begin, ensure you have:
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/farmer1st/farmcode.git
-cd farmcode
+git clone https://github.com/farmer1st/farmer-code.git
+cd farmer-code
 ```
 
 ### 2. Install Dependencies
@@ -52,7 +52,7 @@ Edit `.env` with your credentials:
 ```env
 # GitHub (required for GitHub integration)
 GITHUB_TOKEN=ghp_your_personal_access_token
-GITHUB_REPO=farmer1st/farmcode
+GITHUB_REPO=farmer1st/farmer-code
 
 # Claude (optional - for AI agent tests)
 ANTHROPIC_API_KEY=sk-ant-your_key
@@ -87,7 +87,7 @@ uv run mypy src/
 ## Project Structure
 
 ```
-farmcode/
+farmer-code/
 ├── src/                      # Source code
 │   ├── github_integration/   # GitHub API wrapper
 │   ├── worktree_manager/     # Git worktree management

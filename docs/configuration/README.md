@@ -68,7 +68,7 @@ No configuration required. Uses local git settings.
 ```env
 # GitHub
 GITHUB_TOKEN=ghp_your_token
-GITHUB_REPO=farmer1st/farmcode
+GITHUB_REPO=farmer1st/farmer-code
 
 # Claude (optional)
 ANTHROPIC_API_KEY=sk-ant-your_key

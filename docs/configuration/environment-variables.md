@@ -9,7 +9,7 @@ Complete list of environment variables used by Farmer Code.
 | Variable | Description | Example |
 |----------|-------------|---------|
 | `GITHUB_TOKEN` | GitHub personal access token or app token | `ghp_xxxx...` |
-| `GITHUB_REPO` | Target repository in owner/repo format | `farmer1st/farmcode` |
+| `GITHUB_REPO` | Target repository in owner/repo format | `farmer1st/farmer-code` |
 
 **Token Permissions Required**:
 - `repo` - Full control of private repositories
@@ -81,7 +81,7 @@ In addition to environment variables, some modules use configuration files:
 
 # GitHub Access
 GITHUB_TOKEN=ghp_your_personal_access_token_here
-GITHUB_REPO=farmer1st/farmcode
+GITHUB_REPO=farmer1st/farmer-code
 
 # ===================
 # Optional
@@ -159,8 +159,8 @@ github.GithubException: 404 Not Found
 
 ```bash
 # Correct
-GITHUB_REPO=farmer1st/farmcode
+GITHUB_REPO=farmer1st/farmer-code
 
 # Wrong
-GITHUB_REPO=https://github.com/farmer1st/farmcode
+GITHUB_REPO=https://github.com/farmer1st/farmer-code
 ```

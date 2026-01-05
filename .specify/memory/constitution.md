@@ -611,7 +611,7 @@ v2.0.0-rc.1   # Release candidate
 **Repository Layout**:
 
 ```
-farmcode/
+farmer-code/
 ├── apps/
 │   ├── api/              # Backend API (Python/FastAPI)
 │   │   ├── src/

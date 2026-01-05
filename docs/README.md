@@ -61,8 +61,8 @@ See [Architecture Documentation](./architecture/README.md) for detailed diagrams
 
 1. **Clone the repository**:
    ```bash
-   git clone https://github.com/farmer1st/farmcode.git
-   cd farmcode
+   git clone https://github.com/farmer1st/farmer-code.git
+   cd farmer-code
    ```
 
 2. **Install dependencies**:
