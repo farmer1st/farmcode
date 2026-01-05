@@ -5,9 +5,16 @@ Tests the complete escalation lifecycle: low confidence -> escalation -> human r
 Journey ID: SVC-003
 """
 
+import os
 
 import pytest
 from httpx import AsyncClient
+
+# Skip if services not running
+pytestmark = pytest.mark.skipif(
+    os.getenv("RUN_E2E_TESTS") != "1",
+    reason="Requires RUN_E2E_TESTS=1 and running services",
+)
 
 
 @pytest.mark.e2e

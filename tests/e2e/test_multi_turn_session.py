@@ -5,11 +5,18 @@ Tests complete session lifecycle: create, exchange, close.
 Journey ID: SVC-004
 """
 
+import os
 from typing import Any
 from uuid import UUID
 
 import pytest
 from httpx import AsyncClient
+
+# Skip if services not running
+pytestmark = pytest.mark.skipif(
+    os.getenv("RUN_E2E_TESTS") != "1",
+    reason="Requires RUN_E2E_TESTS=1 and running services",
+)
 
 
 @pytest.mark.e2e
