@@ -7,7 +7,7 @@ when running `docker-compose up`.
 import os
 import subprocess
 import time
-from typing import Generator
+from collections.abc import Generator
 
 import httpx
 import pytest
@@ -72,7 +72,7 @@ class TestDockerComposeSetup:
 
             while time.time() - start_time < max_wait:
                 all_healthy = True
-                for url, name in services:
+                for url, _name in services:
                     try:
                         response = httpx.get(url, timeout=5.0)
                         if response.status_code != 200:

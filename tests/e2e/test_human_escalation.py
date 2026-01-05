@@ -5,8 +5,6 @@ Tests the complete escalation lifecycle: low confidence -> escalation -> human r
 Journey ID: SVC-003
 """
 
-from typing import Any
-from uuid import UUID
 
 import pytest
 from httpx import AsyncClient
@@ -135,7 +133,10 @@ class TestHumanEscalation:
                     f"/escalations/{escalation_id}",
                     json={
                         "action": "add_context",
-                        "response": "This is for a high-traffic e-commerce platform with 99.99% uptime requirements",
+                        "response": (
+                            "This is for a high-traffic e-commerce platform "
+                            "with 99.99% uptime requirements"
+                        ),
                         "responder": "@product-owner",
                     },
                 )

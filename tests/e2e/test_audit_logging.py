@@ -7,11 +7,8 @@ import json
 import os
 import sys
 import tempfile
-from typing import Any
-from unittest.mock import AsyncMock, patch
 
 import pytest
-from httpx import AsyncClient
 
 # Add services/agent-hub to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "services", "agent-hub"))
@@ -38,7 +35,7 @@ class TestAuditLogging:
         # In a real scenario, we would start the service and query it
         # For now, we test that the logging module works correctly
 
-        from src.logging.audit import AuditLogEntry, AuditLogger
+        from src.logging.audit import AuditLogger
 
         with tempfile.TemporaryDirectory() as tmpdir:
             log_path = os.path.join(tmpdir, "audit.jsonl")

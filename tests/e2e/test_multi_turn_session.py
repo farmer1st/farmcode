@@ -54,7 +54,7 @@ class TestMultiTurnSession:
                 ask_response = await client.post(
                     "/ask/architecture",
                     json={
-                        "question": f"Multi-turn question {i + 1}: How should I design this component?",
+                        "question": f"Question {i + 1}: How should I design this?",
                         "context": "Building a microservices architecture",
                         "feature_id": "008-e2e-session",
                         "session_id": session_id,
