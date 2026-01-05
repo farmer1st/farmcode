@@ -7,11 +7,10 @@ that builds dispatch prompts and parses Baron's structured output.
 import json
 import time
 from pathlib import Path
-from typing import TypeVar
+from typing import Any, Protocol, TypeVar
 
 import yaml
 
-from orchestrator.agent_runner import ClaudeCLIRunner
 from orchestrator.baron_models import (
     PlanRequest,
     PlanResult,
@@ -21,7 +20,28 @@ from orchestrator.baron_models import (
     TasksResult,
 )
 
-T = TypeVar("T")
+T = TypeVar("T", SpecifyResult, PlanResult, TasksResult)
+
+
+class ExecuteResult(Protocol):
+    """Protocol for execute result with output attribute."""
+
+    output: str
+
+
+class BaronRunner(Protocol):
+    """Protocol for runners that support Baron's execute interface."""
+
+    def execute(
+        self,
+        prompt: str,
+        system_prompt: str,
+        model: str,
+        tools: list[str],
+        timeout: int,
+    ) -> ExecuteResult:
+        """Execute an agent with the given parameters."""
+        ...
 
 
 class DispatchError(Exception):
@@ -40,7 +60,7 @@ class BaronDispatcher:
     """Dispatches Baron agent for speckit workflows.
 
     Baron is a Claude agent - this class builds prompts, triggers execution
-    via ClaudeCLIRunner, and parses structured results.
+    via BaronRunner, and parses structured results.
     """
 
     RESULT_START_MARKER = "<!-- BARON_RESULT_START -->"
@@ -48,7 +68,7 @@ class BaronDispatcher:
 
     def __init__(
         self,
-        runner: ClaudeCLIRunner,
+        runner: BaronRunner,
         agent_config_path: Path | None = None,
     ):
         """Initialize dispatcher.
@@ -63,7 +83,7 @@ class BaronDispatcher:
         self._config = self._load_config()
         self._system_prompt = self._load_system_prompt()
 
-    def _load_config(self) -> dict:
+    def _load_config(self) -> dict[str, Any]:
         """Load Baron agent configuration from YAML."""
         if not self.config_path.exists():
             return {}

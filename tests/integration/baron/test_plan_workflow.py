@@ -12,7 +12,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from orchestrator.baron_dispatch import BaronDispatcher, DispatchError, ParseError
-from orchestrator.baron_models import PlanRequest, PlanResult
+from orchestrator.baron_models import PlanRequest
 
 
 @pytest.mark.journey("BRN-002")
@@ -239,7 +239,8 @@ class TestPlanWorkflowRealAgent:
         3. Valid templates in .specify/templates/
         4. Existing spec.md to plan from
 
-        Run manually with: pytest tests/integration/baron/test_plan_workflow.py::TestPlanWorkflowRealAgent::test_real_agent_creates_plan -v
+        Run manually with:
+            pytest tests/integration/baron/test_plan_workflow.py -v
         """
         # Use existing test spec or create one
         spec_path = Path("specs/099-test-baron/spec.md")

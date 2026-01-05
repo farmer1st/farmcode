@@ -6,15 +6,13 @@ spec.md is created with all mandatory sections.
 Journey: BRN-001 - Create Specification Autonomously
 """
 
-import os
-import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from orchestrator.baron_dispatch import BaronDispatcher, DispatchError, ParseError
-from orchestrator.baron_models import SpecifyRequest, SpecifyResult
+from orchestrator.baron_models import SpecifyRequest
 
 
 @pytest.mark.journey("BRN-001")
@@ -70,7 +68,7 @@ class TestSpecifyWorkflow:
     def test_dispatch_specify_creates_spec(self, dispatcher, mock_runner):
         """Test that Baron creates spec.md with valid result."""
         request = SpecifyRequest(
-            feature_description="Add user authentication with OAuth2 support for Google and GitHub providers"
+            feature_description="Add user authentication with OAuth2 support"
         )
 
         result = dispatcher.dispatch_specify(request)
@@ -220,7 +218,8 @@ class TestSpecifyWorkflowRealAgent:
         2. Agent Hub MCP server running
         3. Valid templates in .specify/templates/
 
-        Run manually with: pytest tests/integration/baron/test_specify_workflow.py::TestSpecifyWorkflowRealAgent::test_real_agent_creates_spec -v
+        Run manually with:
+            pytest tests/integration/baron/test_specify_workflow.py -v
         """
         request = SpecifyRequest(
             feature_description="Add a simple hello world greeting feature for testing Baron agent",

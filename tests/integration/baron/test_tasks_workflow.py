@@ -12,7 +12,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from orchestrator.baron_dispatch import BaronDispatcher, DispatchError, ParseError
-from orchestrator.baron_models import TasksRequest, TasksResult
+from orchestrator.baron_models import TasksRequest
 
 
 @pytest.mark.journey("BRN-003")
@@ -222,7 +222,8 @@ class TestTasksWorkflowRealAgent:
         3. Valid templates in .specify/templates/
         4. Existing plan.md to generate tasks from
 
-        Run manually with: pytest tests/integration/baron/test_tasks_workflow.py::TestTasksWorkflowRealAgent::test_real_agent_creates_tasks -v
+        Run manually with:
+            pytest tests/integration/baron/test_tasks_workflow.py -v
         """
         # Use existing test plan or create one
         plan_path = Path("specs/099-test-baron/plan.md")
