@@ -28,7 +28,7 @@ curl -X POST http://localhost:8001/workflows \
   -d '{"workflow_type": "specify", "feature_description": "Add user authentication"}'
 ```
 
-[Full Installation Guide](getting-started/installation.md){ .md-button }
+**[Full Installation Guide →](getting-started/installation.md)**
 
 ## Architecture
 
@@ -48,45 +48,18 @@ graph LR
 | Duc | 8011 | Architecture expert |
 | Marie | 8012 | Testing expert |
 
-[Architecture Overview](architecture/index.md){ .md-button }
+**[Architecture Overview →](architecture/index.md)**
 
 ## Documentation Sections
 
-<div class="grid cards" markdown>
-
--   :material-rocket-launch: **Getting Started**
-
-    ---
-
-    Installation, quickstart, and development setup.
-
-    [:octicons-arrow-right-24: Get started](getting-started/index.md)
-
--   :material-sitemap: **Architecture**
-
-    ---
-
-    System design, services, and data flow.
-
-    [:octicons-arrow-right-24: Learn more](architecture/index.md)
-
--   :material-server: **Services**
-
-    ---
-
-    Individual service documentation.
-
-    [:octicons-arrow-right-24: Explore](services/index.md)
-
--   :material-book-open: **Guides**
-
-    ---
-
-    How-to guides for common tasks.
-
-    [:octicons-arrow-right-24: Read guides](guides/index.md)
-
-</div>
+| Section | Description |
+|---------|-------------|
+| [Getting Started](getting-started/index.md) | Installation, quickstart, and development setup |
+| [Architecture](architecture/index.md) | System design, services, and data flow |
+| [Services](services/index.md) | Individual service documentation |
+| [Guides](guides/index.md) | How-to guides for common tasks |
+| [Reference](reference/index.md) | Configuration, environment variables, API contracts |
+| [User Journeys](user-journeys/index.md) | Test scenarios and acceptance criteria |
 
 ## Links
 
