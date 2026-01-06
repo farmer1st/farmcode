@@ -12,7 +12,7 @@ System configuration options and settings files.
 
 All environment variables used by Farmer Code services.
 
-### [API Contracts](api-contracts.md)
+### [API Contracts](../api/index.md)
 
 OpenAPI specifications for all service APIs.
 

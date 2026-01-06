@@ -277,6 +277,6 @@ Submit human response to escalation.
 ## Related Documentation
 
 - [Services Overview](../services/index.md)
-- [API Contracts](../reference/api-contracts.md)
+- [API Contracts](../api/index.md)
 - [SVC-002: Agent Consultation](./SVC-002-agent-consultation.md)
 - [SVC-004: Multi-Turn Session](./SVC-004-multi-turn-session.md)

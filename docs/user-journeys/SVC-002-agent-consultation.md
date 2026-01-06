@@ -224,5 +224,5 @@ Get Agent Hub health status.
 
 - [Services Overview](../services/index.md)
 - [Agent Hub Architecture](../architecture/agent-hub.md)
-- [API Contracts](../reference/api-contracts.md)
+- [API Contracts](../api/index.md)
 - [SVC-005: Stateless Agent](./SVC-005-stateless-agent.md)

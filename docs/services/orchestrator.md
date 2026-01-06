@@ -225,4 +225,4 @@ services/orchestrator/
 
 - [User Journey: SVC-001](../user-journeys/SVC-001-orchestrator-workflow.md)
 - [Agent Hub Service](./agent-hub.md)
-- [API Contracts](../reference/api-contracts.md)
+- [API Contracts](../reference/../api/index.md)

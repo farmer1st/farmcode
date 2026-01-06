@@ -244,6 +244,6 @@ Get Orchestrator health status.
 ## Related Documentation
 
 - [Services Overview](../services/index.md)
-- [API Contracts](../reference/api-contracts.md)
+- [API Contracts](../api/index.md)
 - [SVC-002: Agent Consultation](./SVC-002-agent-consultation.md)
 - [SVC-005: Stateless Agent](./SVC-005-stateless-agent.md)

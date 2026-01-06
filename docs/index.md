@@ -64,5 +64,5 @@ graph LR
 ## Links
 
 - [GitHub Repository](https://github.com/farmer1st/farmer-code)
-- [API Reference](reference/api-contracts.md)
+- [API Reference](api/index.md)
 - [User Journeys](user-journeys/index.md)

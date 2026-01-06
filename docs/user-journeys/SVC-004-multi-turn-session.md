@@ -242,5 +242,5 @@ Close a session (preserves history).
 ## Related Documentation
 
 - [Services Overview](../services/index.md)
-- [API Contracts](../reference/api-contracts.md)
+- [API Contracts](../api/index.md)
 - [SVC-002: Agent Consultation](./SVC-002-agent-consultation.md)

@@ -18,7 +18,7 @@ Agent services are stateless HTTP services that use the Claude Code SDK to proce
 
 ## Common API
 
-All agent services implement a common API (see [API Contracts](../../reference/api-contracts.md)):
+All agent services implement a common API (see [API Contracts](../../reference/../api/index.md)):
 
 ### Endpoints
 

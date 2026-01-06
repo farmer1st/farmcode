@@ -20,4 +20,4 @@ Write and run tests for Farmer Code components.
 
 - [Quick Start](../getting-started/quickstart.md) - Get started in 5 minutes
 - [Services Overview](../services/index.md) - Understand the architecture
-- [API Reference](../reference/api-contracts.md) - API documentation
+- [API Reference](../api/index.md) - API documentation

@@ -79,9 +79,17 @@ nav:
     - Running Locally: guides/running-locally.md
     - Adding an Agent: guides/adding-an-agent.md
     - Testing: guides/testing.md
+  - API Reference:
+    - api/index.md
+    - Orchestrator: api/orchestrator.md
+    - Agent Hub: api/agent-hub.md
+    - Agents:
+      - api/agents/index.md
+      - Baron: api/agents/baron.md
+      - Duc: api/agents/duc.md
+      - Marie: api/agents/marie.md
   - Reference:
     - reference/index.md
     - Configuration: reference/configuration.md
     - Environment Variables: reference/environment.md
-    - API Contracts: reference/api-contracts.md
   - User Journeys: user-journeys/index.md

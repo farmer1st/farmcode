@@ -152,4 +152,4 @@ Get Baron health status.
 
 - [Services Overview](../services/index.md)
 - [Baron Agent](../services/agents/baron.md)
-- [API Contracts](../reference/api-contracts.md)
+- [API Contracts](../api/index.md)
