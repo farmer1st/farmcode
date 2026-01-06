@@ -1,0 +1,86 @@
+site_name: Farmer Code
+site_description: AI-powered SDLC automation platform
+site_url: https://farmer1st.github.io/farmer-code
+repo_url: https://github.com/farmer1st/farmer-code
+repo_name: farmer1st/farmer-code
+
+theme:
+  name: material
+  palette:
+    - scheme: default
+      primary: green
+      accent: light green
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: green
+      accent: light green
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.sections
+    - navigation.expand
+    - navigation.indexes
+    - toc.follow
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+
+plugins:
+  - search
+  - awesome-pages
+
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - admonition
+  - pymdownx.details
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+
+nav:
+  - Home: index.md
+  - Getting Started:
+    - getting-started/index.md
+    - Installation: getting-started/installation.md
+    - Quick Start: getting-started/quickstart.md
+    - Development Workflow: getting-started/development.md
+  - Architecture:
+    - architecture/index.md
+    - System Overview: architecture/system-overview.md
+    - Services: architecture/services.md
+    - Data Flow: architecture/data-flow.md
+  - Services:
+    - services/index.md
+    - Orchestrator: services/orchestrator.md
+    - Agent Hub: services/agent-hub.md
+    - Agents:
+      - services/agents/index.md
+      - Baron (PM): services/agents/baron.md
+      - Duc (Architecture): services/agents/duc.md
+      - Marie (Testing): services/agents/marie.md
+  - Guides:
+    - guides/index.md
+    - Running Locally: guides/running-locally.md
+    - Adding an Agent: guides/adding-an-agent.md
+    - Testing: guides/testing.md
+  - Reference:
+    - reference/index.md
+    - Configuration: reference/configuration.md
+    - Environment Variables: reference/environment.md
+    - API Contracts: reference/api-contracts.md
+  - User Journeys: user-journeys/index.md

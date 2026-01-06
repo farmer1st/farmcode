@@ -27,6 +27,11 @@ dev = [
     "jsonschema>=4.20.0",
     "types-pyyaml>=6.0.0",
 ]
+docs = [
+    "mkdocs>=1.6.0",
+    "mkdocs-material>=9.5.0",
+    "mkdocs-awesome-pages-plugin>=2.9.0",
+]
 
 [tool.setuptools.packages.find]
 where = ["src"]

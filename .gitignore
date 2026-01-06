@@ -111,6 +111,7 @@ test-results/
 # Documentation builds
 docs/_build/
 docs/.doctrees/
+site/
 
 # OS specific
 Thumbs.db
