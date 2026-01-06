@@ -24,6 +24,7 @@ def _should_skip() -> bool:
 
 @pytest.mark.e2e
 @pytest.mark.journey("SVC-005")
+@pytest.mark.anyio
 class TestBaronStatelessE2E:
     """E2E tests for SVC-005: Stateless Agent Invocation.
 

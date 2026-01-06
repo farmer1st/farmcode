@@ -24,6 +24,7 @@ def _should_skip() -> bool:
 
 @pytest.mark.e2e
 @pytest.mark.journey("SVC-002")
+@pytest.mark.anyio
 class TestAgentConsultationE2E:
     """E2E tests for SVC-002: Expert Agent Consultation.
 
