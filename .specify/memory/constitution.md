@@ -1,16 +1,17 @@
 <!--
 Sync Impact Report:
-- Version change: 1.6.4 → 1.7.0
+- Version change: 1.7.0 → 1.8.0
 - Modified principles: XI (Documentation and User Journeys)
-- Added sections: Documentation Directory Structure with explicit docs/ folder requirements
+- Added sections: MkDocs Documentation System requirements
 - Removed sections: None
 - Templates requiring updates:
-  - tasks-template.md - add documentation tasks for docs/ folder structure
+  - tasks-template.md - add MkDocs verification task for each feature
 - Follow-up TODOs:
-  - Create missing docs/ structure for existing features
-  - Add docs/ structure validation to CI (optional)
-- Rationale for MINOR bump: Added new requirement (docs/ folder structure) that affects all features
+  - Verify mkdocs.yml nav includes all new docs
+  - Run mkdocs build to verify no broken links
+- Rationale for MINOR bump: Added new requirement (MkDocs updates per feature) that affects workflow
 Previous changes:
+- 1.6.4 → 1.7.0: Added Documentation Directory Structure with explicit docs/ folder requirements
 - 1.6.3 → 1.6.4: Added Redocly CLI tooling and API-first workflow
 - 1.6.2 → 1.6.3: Added comprehensive API Documentation Standards in Quality Standards
 - 1.6.1 → 1.6.2: Added Service Interface requirement in Documentation Requirements
@@ -448,6 +449,42 @@ docs/
 - Each new module MUST have corresponding docs/modules/[name].md
 - Each feature MUST update docs/architecture/ if it adds new components
 - CI should verify docs/ structure exists (optional linting)
+
+**MkDocs Documentation System** (REQUIRED):
+
+The project uses MkDocs with Material theme for documentation. All docs/ content MUST be accessible via MkDocs.
+
+- **Configuration**: `mkdocs.yml` at repository root
+- **Build Command**: `uv run --extra docs mkdocs build`
+- **Serve Command**: `./mkdocs.sh` (serves at localhost:8080)
+- **Output Directory**: `/tmp/farmer-code-docs` (not committed)
+
+**MkDocs Update Requirements**:
+- Each new feature MUST update `mkdocs.yml` nav section if adding new pages
+- Each new service/module MUST have documentation added to MkDocs nav
+- Run `mkdocs build` before PR to verify no broken links
+- Documentation not in MkDocs nav is considered missing documentation
+
+**Feature Documentation Checklist**:
+1. Create/update relevant docs/*.md files
+2. Add new pages to `mkdocs.yml` nav section
+3. Run `uv run --extra docs mkdocs build` to verify build succeeds
+4. Fix any broken link warnings before merge
+5. Verify new pages render correctly with `./mkdocs.sh`
+
+**MkDocs Nav Structure** (keep in sync with docs/ folder):
+```yaml
+nav:
+  - Home: index.md
+  - Getting Started: getting-started/...
+  - Architecture: architecture/...
+  - Services: services/...
+  - Guides: guides/...
+  - Reference: reference/...
+  - User Journeys: user-journeys/...
+```
+
+**Rationale**: MkDocs provides a searchable, navigable documentation site. Keeping mkdocs.yml nav in sync with docs/ ensures all documentation is discoverable. Build verification catches broken links before they reach users.
 
 **Test-to-Journey Mapping**:
 - **E2E Tests MUST be tagged** with journey markers:
@@ -903,4 +940,4 @@ All APIs and public interfaces MUST be documented for discoverability and usabil
 
 **Guidance Document**: See `.specify/templates/` for implementation guidance and workflow execution details.
 
-**Version**: 1.7.0 | **Ratified**: 2026-01-02 | **Last Amended**: 2026-01-04
+**Version**: 1.8.0 | **Ratified**: 2026-01-02 | **Last Amended**: 2026-01-06
