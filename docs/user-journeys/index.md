@@ -154,6 +154,5 @@ This helps track which user journeys are fully tested and working.
 ## Related Documentation
 
 - **[JOURNEYS.md](./JOURNEYS.md)** - View all journeys with status and coverage
-- **[Constitution - Principle XI](../../.specify/memory/constitution.md#xi-documentation-and-user-journeys)** - Journey standards
-- **[SDLC Workflow Reference](../../references/sdlc-workflow.md)** - The 8-phase workflow
-- **E2E Test Guide** (future) - How to write journey tests
+- **[Architecture](../architecture/index.md)** - System architecture documentation
+- **[Services](../services/index.md)** - Service documentation

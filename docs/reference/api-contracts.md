@@ -6,9 +6,9 @@ OpenAPI specifications for Farmer Code services.
 
 Full OpenAPI specs are in `specs/008-services-architecture/contracts/`:
 
-- [orchestrator.yaml](../../specs/008-services-architecture/contracts/orchestrator.yaml)
-- [agent-hub.yaml](../../specs/008-services-architecture/contracts/agent-hub.yaml)
-- [agent-service.yaml](../../specs/008-services-architecture/contracts/agent-service.yaml)
+- orchestrator.yaml
+- agent-hub.yaml
+- agent-service.yaml
 
 ## Orchestrator API
 

@@ -9,12 +9,12 @@ This section documents the system architecture, component interactions, and desi
 | [System Overview](./system-overview.md) | High-level architecture and design principles |
 | [Module Interactions](./module-interactions.md) | How modules communicate and depend on each other |
 | [Agent Hub](./agent-hub.md) | Agent Hub service architecture |
-| [Services](../services/README.md) | Microservices architecture (Feature 008) |
+| [Services](../services/index.md) | Microservices architecture (Feature 008) |
 | [Diagrams](./diagrams/) | Visual architecture diagrams (Mermaid) |
 
 ## Architecture Principles
 
-Farmer Code follows these architectural principles (from the [Constitution](../../.specify/memory/constitution.md)):
+Farmer Code follows these architectural principles (from the Constitution):
 
 1. **Thin Client Architecture**: All business logic in backend, clients are presentation-only
 2. **Local-First Design**: Primary deployment is local, cloud-ready as future option
@@ -130,6 +130,5 @@ See [Module Interactions](./module-interactions.md) for detailed data flow diagr
 
 ## Related Documentation
 
-- [Modules](../modules/README.md) - Detailed module documentation
+- [Services](../services/index.md) - Service documentation
 - [User Journeys](../user-journeys/JOURNEYS.md) - End-to-end workflows
-- [Constitution](../../.specify/memory/constitution.md) - Development principles

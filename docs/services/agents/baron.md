@@ -80,4 +80,3 @@ Environment variables:
 ## Source
 
 - Location: `services/agents/baron/`
-- README: [services/agents/baron/README.md](../../../services/agents/baron/README.md)

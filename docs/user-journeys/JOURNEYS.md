@@ -233,10 +233,9 @@ pytest --co -m journey
 
 ## Related Documentation
 
-- [Journey Documentation Guide](./README.md) - How to write and maintain journey docs
-- [Constitution - Principle XI](../../.specify/memory/constitution.md#xi-documentation-and-user-journeys) - Journey standards
-- [E2E Test Guide](../testing/e2e-tests.md) - How to write journey tests (future)
-- [SDLC Workflow Reference](../../references/sdlc-workflow.md) - The 8-phase workflow
+- [Journey Documentation Guide](./index.md) - How to write and maintain journey docs
+- [Architecture](../architecture/index.md) - System architecture documentation
+- [Services](../services/index.md) - Service documentation
 
 ## Last Updated
 

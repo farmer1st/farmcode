@@ -96,7 +96,7 @@
 ## Changes
 - `src/module/file.py`: Added feature implementation
 - `tests/test_file.py`: Added comprehensive tests
-- `docs/README.md`: Updated documentation
+- `docs/index.md`: Updated documentation
 
 ## Test Results
 - ✅ 48/48 tests passing

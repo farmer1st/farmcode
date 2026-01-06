@@ -43,8 +43,7 @@ service.issues.update_labels(
 
 ## Source Documentation
 
-For API reference and detailed usage, see:
-- [`src/github_integration/README.md`](../../src/github_integration/README.md)
+For API reference and detailed usage, see the source code in `src/github_integration/`.
 
 ## Architecture
 
@@ -115,6 +114,4 @@ except GitHubAPIError as e:
 
 ## Related Documentation
 
-- [Specification](../../specs/001-github-integration-core/spec.md)
-- [Contracts](../../specs/001-github-integration-core/contracts/)
-- [API Documentation](../api/README.md)
+See the source code and tests in `src/github_integration/` and `tests/unit/github_integration/`.

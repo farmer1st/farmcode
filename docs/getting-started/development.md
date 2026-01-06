@@ -14,8 +14,8 @@ Farmer Code uses a specification-driven, test-first development workflow:
 
 Before contributing, understand:
 
-1. **[Constitution](../../.specify/memory/constitution.md)** - Development principles
-2. **[Architecture](../architecture/README.md)** - System design
+1. **Constitution** - Development principles
+2. **[Architecture](../architecture/index.md)** - System design
 3. **[User Journeys](../user-journeys/JOURNEYS.md)** - Feature workflows
 
 ## Step 1: Create Feature Specification
@@ -114,7 +114,7 @@ Use conventional commits:
 
 After implementing, update docs:
 
-1. **Module README**: `src/[module]/README.md`
+1. **Module README**: `src/[module]/index.md`
 2. **Module Doc**: `docs/modules/[module-name].md`
 3. **User Journeys**: `docs/user-journeys/[DOMAIN]-[NNN]-*.md`
 4. **Journey Index**: `docs/user-journeys/JOURNEYS.md`
@@ -245,7 +245,7 @@ def get_agent(topic: str) -> Agent:
 
 ```bash
 # Before PR, check:
-cat src/[module]/README.md         # Module docs exist
+cat src/[module]/index.md         # Module docs exist
 cat docs/modules/[module-name].md  # Extended docs exist
 cat docs/user-journeys/[DOMAIN]-*.md  # Journey docs exist
 ```

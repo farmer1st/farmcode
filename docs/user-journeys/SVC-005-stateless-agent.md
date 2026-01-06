@@ -150,6 +150,6 @@ Get Baron health status.
 
 ## Related Documentation
 
-- [Services Overview](../services/README.md)
+- [Services Overview](../services/index.md)
 - [Baron Agent](../services/agents/baron.md)
-- [Agent Service Contract](../../specs/008-services-architecture/contracts/agent-service.yaml)
+- [API Contracts](../reference/api-contracts.md)

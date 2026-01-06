@@ -91,11 +91,10 @@ For more details, see [Local Development Setup](../user-journeys/SVC-006-local-d
 
 | Task | Guide |
 |------|-------|
-| Understand the codebase | [Architecture Overview](../architecture/README.md) |
-| Contribute a feature | [Development Workflow](./development-workflow.md) |
+| Understand the codebase | [Architecture Overview](../architecture/index.md) |
+| Contribute a feature | [Development Workflow](./development.md) |
 | Run services locally | [Docker Compose Guide](../user-journeys/SVC-006-local-dev-setup.md) |
-| Explore services | [Services Documentation](../services/README.md) |
-| Run journey tests | [Testing Guide](../testing/README.md) |
+| Explore services | [Services Documentation](../services/index.md) |
 
 ## Quick Reference
 

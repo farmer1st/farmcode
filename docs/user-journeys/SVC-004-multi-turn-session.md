@@ -241,6 +241,6 @@ Close a session (preserves history).
 
 ## Related Documentation
 
-- [Services Overview](../services/README.md)
-- [Agent Hub Contract](../../specs/008-services-architecture/contracts/agent-hub.yaml)
+- [Services Overview](../services/index.md)
+- [API Contracts](../reference/api-contracts.md)
 - [SVC-002: Agent Consultation](./SVC-002-agent-consultation.md)

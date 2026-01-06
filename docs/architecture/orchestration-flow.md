@@ -423,9 +423,7 @@ def test_baron_creates_spec():
 
 ## Related Documentation
 
-- [Baron Agent README](../../.claude/agents/baron/README.md)
 - [Agent Hub Architecture](./agent-hub.md)
 - [System Overview](./system-overview.md)
 - [Module Interactions](./module-interactions.md)
 - [User Journeys](../user-journeys/JOURNEYS.md)
-- [Constitution](../../.specify/memory/constitution.md)

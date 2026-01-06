@@ -49,8 +49,7 @@ service.delete_worktree(result.worktree_path)
 
 ## Source Documentation
 
-For API reference and detailed usage, see:
-- [`src/worktree_manager/README.md`](../../src/worktree_manager/README.md)
+For API reference and detailed usage, see the source code in `src/worktree_manager/`.
 
 ## Architecture
 
@@ -129,5 +128,4 @@ except GitCommandError as e:
 
 ## Related Documentation
 
-- [Specification](../../specs/002-git-worktree-manager/spec.md)
-- [Contracts](../../specs/002-git-worktree-manager/contracts/)
+See the source code and tests in `src/worktree_manager/` and `tests/unit/worktree_manager/`.

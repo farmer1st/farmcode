@@ -224,5 +224,5 @@ services/orchestrator/
 ## Related Documentation
 
 - [User Journey: SVC-001](../user-journeys/SVC-001-orchestrator-workflow.md)
-- [API Contract](../../specs/008-services-architecture/contracts/orchestrator.yaml)
 - [Agent Hub Service](./agent-hub.md)
+- [API Contracts](../reference/api-contracts.md)

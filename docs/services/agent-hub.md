@@ -420,5 +420,5 @@ services/agent-hub/
 - [User Journey: SVC-003 Human Escalation](../user-journeys/SVC-003-human-escalation.md)
 - [User Journey: SVC-004 Multi-Turn Session](../user-journeys/SVC-004-multi-turn-session.md)
 - [User Journey: SVC-007 Audit Log Query](../user-journeys/SVC-007-audit-log-query.md)
-- [API Contract](../../specs/008-services-architecture/contracts/agent-hub.yaml)
 - [Orchestrator Service](./orchestrator.md)
+- [API Contracts](../reference/api-contracts.md)

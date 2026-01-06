@@ -14,7 +14,7 @@
 2. **Verify folder structure**
    - Expected outcome: All required files exist
    - System behavior: Returns PlansFolder model with paths to:
-     - `.plans/{issue}/README.md`
+     - `.plans/{issue}/index.md`
      - `.plans/{issue}/spec.md`
      - `.plans/{issue}/plan.md`
      - `.plans/{issue}/tasks.md`

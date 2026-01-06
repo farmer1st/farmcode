@@ -242,4 +242,4 @@ The system uses a services-based architecture with independent HTTP services:
 - **Agent Hub Service**: Agent routing, sessions, escalation, audit logging
 - **Agent Services**: Stateless SDK-based agents (Baron, Duc, Marie)
 
-For details, see [Services Architecture](../services/README.md).
+For details, see [Services Architecture](../services/index.md).

@@ -49,9 +49,8 @@ curl http://localhost:8004/health  # Marie
 ## Related Documentation
 
 - [System Overview](../architecture/system-overview.md)
-- [Services Communication](../architecture/services-communication.md)
-- [Environment Variables](../configuration/environment-variables.md)
-- [Docker Compose Guide](../configuration/docker-compose.md)
+- [Environment Variables](../reference/environment.md)
+- [Configuration](../reference/configuration.md)
 
 ## User Journeys
 

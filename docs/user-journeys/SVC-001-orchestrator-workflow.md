@@ -243,7 +243,7 @@ Get Orchestrator health status.
 
 ## Related Documentation
 
-- [Services Overview](../services/README.md)
-- [Orchestrator Contract](../../specs/008-services-architecture/contracts/orchestrator.yaml)
+- [Services Overview](../services/index.md)
+- [API Contracts](../reference/api-contracts.md)
 - [SVC-002: Agent Consultation](./SVC-002-agent-consultation.md)
 - [SVC-005: Stateless Agent](./SVC-005-stateless-agent.md)

@@ -230,6 +230,6 @@ uv run pytest tests/e2e/test_docker_compose.py::TestDockerComposeWithoutDocker -
 ## Related Documentation
 
 - [Quickstart Guide](../getting-started/quickstart.md)
-- [Services Overview](../services/README.md)
+- [Services Overview](../services/index.md)
 - [Orchestrator Service](../services/orchestrator.md)
 - [Agent Hub Service](../services/agent-hub.md)

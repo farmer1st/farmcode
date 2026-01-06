@@ -7,7 +7,7 @@ This guide will help you set up Farmer Code for development.
 | Document | Description |
 |----------|-------------|
 | [Quick Start](./quickstart.md) | 5-minute setup guide |
-| [Development Workflow](./development-workflow.md) | How to contribute |
+| [Development Workflow](./development.md) | How to contribute |
 
 ## Prerequisites
 
@@ -108,10 +108,9 @@ farmer-code/
 
 ## Next Steps
 
-1. **Read the Constitution**: [.specify/memory/constitution.md](../../.specify/memory/constitution.md)
-2. **Explore the Architecture**: [docs/architecture/](../architecture/README.md)
-3. **Understand the Modules**: [docs/modules/](../modules/README.md)
-4. **Review User Journeys**: [docs/user-journeys/](../user-journeys/JOURNEYS.md)
+1. **Explore the Architecture**: [Architecture Overview](../architecture/index.md)
+2. **Learn about Services**: [Services Documentation](../services/index.md)
+3. **Review User Journeys**: [User Journeys](../user-journeys/JOURNEYS.md)
 
 ## Common Commands
 
