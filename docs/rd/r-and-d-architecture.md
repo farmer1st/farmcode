@@ -1,6 +1,6 @@
 # Farmer1st Architecture Proposal
 
-**Version:** 0.3.14-draft
+**Version:** 0.3.15-draft
 **Status:** R&D Discussion
 **Last Updated:** 2026-01-09
 
@@ -1867,6 +1867,140 @@ async def cleanup_worktree(path: str):
     repo_path = get_repo_path(path)
     await run(f"git -C {repo_path} worktree remove {path}")
 ```
+
+### 7.4 Git State Validation
+
+When an agent receives a task, it validates the git state before proceeding. This ensures:
+
+- **Correctness**: Agent works on expected commit, not stale state
+- **Efficiency**: Same agent doing multiple phases skips unnecessary fetches
+- **Robustness**: Pod crash/restart recovers to correct state
+- **Safety**: Detects corruption, race conditions, or unexpected changes
+
+**The Pattern:**
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                        Git State Validation Flow                                 │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                  │
+│  Orchestrator calls agent:                                                       │
+│    invoke(skill="specify.plan", expected_commit_sha="abc123")                   │
+│                         │                                                        │
+│                         ▼                                                        │
+│  Agent checks: current HEAD == expected_sha?                                     │
+│                         │                                                        │
+│           ┌─────────────┴─────────────┐                                          │
+│           │                           │                                          │
+│           ▼ YES                       ▼ NO                                       │
+│  Skip fetch, proceed          Fetch from origin                                  │
+│  (common for Baron            Checkout expected_sha                              │
+│   doing SPECIFY→PLAN→TASKS)           │                                          │
+│           │                           ▼                                          │
+│           │               Validate: HEAD == expected_sha?                        │
+│           │                           │                                          │
+│           │              ┌────────────┴────────────┐                             │
+│           │              │                         │                             │
+│           │              ▼ YES                     ▼ NO                          │
+│           │         Proceed                   REJECT TASK                        │
+│           │              │                    (GitStateError)                    │
+│           │              │                         │                             │
+│           └──────────────┴─────────────────────────┘                             │
+│                         │                                                        │
+│                         ▼                                                        │
+│              Execute task, commit result                                         │
+│              Return new_commit_sha to orchestrator                               │
+│                                                                                  │
+└─────────────────────────────────────────────────────────────────────────────────┘
+```
+
+**Agent Implementation:**
+
+```python
+class AgentRuntime:
+    async def handle_task(self, task: AgentTask) -> PhaseResult:
+        """Handle incoming task with git state validation."""
+        expected_sha = task.expected_commit_sha
+
+        # Check current state
+        current_sha = await self.git.rev_parse("HEAD")
+
+        if current_sha == expected_sha:
+            # Already at correct state (same agent continuing, e.g., Baron SPECIFY→PLAN)
+            logger.debug(f"Already at expected SHA {expected_sha[:8]}, skipping fetch")
+        else:
+            # Need to sync - different agent or pod restarted
+            logger.info(f"At {current_sha[:8]}, need {expected_sha[:8]}, fetching...")
+            await self.git.fetch("origin")
+            await self.git.checkout(expected_sha)
+
+            # Validate after fetch
+            actual_sha = await self.git.rev_parse("HEAD")
+            if actual_sha != expected_sha:
+                # Something is wrong - reject immediately
+                raise GitStateError(
+                    f"Expected SHA {expected_sha} but got {actual_sha} after fetch. "
+                    "Possible causes: force push, branch deleted, or fetch failed."
+                )
+
+        # Proceed with task
+        result = await self.execute_skill(task.skill, task.context)
+
+        # Commit and push
+        new_sha = await self.git.commit_and_push(
+            message=f"[{self.agent_name}] {task.skill}: {task.summary}",
+            idempotency_key=task.idempotency_key,
+        )
+
+        return PhaseResult(
+            status="completed",
+            commit_sha=new_sha,
+            confidence=result.confidence,
+            artifacts=result.artifacts,
+        )
+```
+
+**Orchestrator Side:**
+
+```python
+class IssueOrchestrator:
+    async def _execute_phase(self, phase: Phase) -> PhaseResult:
+        """Execute a phase, passing expected commit SHA."""
+        state = await self.projection.get_state(self.issue_id)
+
+        # For first phase, use branch HEAD; otherwise use last phase's commit
+        if state.last_commit_sha:
+            expected_sha = state.last_commit_sha
+        else:
+            expected_sha = await self.git.get_branch_head(self.branch_name)
+
+        return await self.agent_client.invoke(
+            agent=phase.agent,
+            skill=phase.skill,
+            context={
+                "issue_id": self.issue_id,
+                "expected_commit_sha": expected_sha,
+                "issue_context": state.issue_context,
+                ...
+            }
+        )
+```
+
+**Scenarios:**
+
+| Scenario | current_sha | expected_sha | Action |
+|----------|-------------|--------------|--------|
+| Baron continues (SPECIFY→PLAN) | abc123 | abc123 | Skip fetch, proceed |
+| Duc starts after Baron | xyz789 | abc123 | Fetch, checkout, proceed |
+| Pod crashed, restarted | (empty) | abc123 | Fetch, checkout, proceed |
+| Someone force-pushed | def456 | abc123 | Fetch, **still def456** → REJECT |
+| Network issue | abc123 | abc123 | Skip fetch (lucky), proceed |
+
+**Error Handling:**
+
+When `GitStateError` is raised, the orchestrator records a `PhaseFailed` event and stops
+the workflow. This requires human investigation — the git state is inconsistent with what
+the workflow expects.
 
 ---
 
