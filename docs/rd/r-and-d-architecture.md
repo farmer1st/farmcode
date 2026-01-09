@@ -1,8 +1,8 @@
 # Farmer1st Architecture Proposal
 
-**Version:** 0.2.0-draft
+**Version:** 0.3.14-draft
 **Status:** R&D Discussion
-**Last Updated:** 2025-01-08
+**Last Updated:** 2026-01-09
 
 ## Executive Summary
 
@@ -35,10 +35,13 @@ Key design principles:
 9. [Event Sourcing](#9-event-sourcing)
 10. [Feedback Loops](#10-feedback-loops)
 11. [Resilience Patterns](#11-resilience-patterns)
-12. [CI/CD Pipeline](#12-cicd-pipeline)
-13. [Observability](#13-observability)
-14. [Future: Chat Portal](#14-future-chat-portal)
-15. [Open Questions](#15-open-questions)
+12. [Why Custom Workflow Engine](#12-why-custom-workflow-engine)
+13. [Security](#13-security)
+14. [Testing Strategy](#14-testing-strategy)
+15. [CI/CD Pipeline](#15-cicd-pipeline)
+16. [Observability](#16-observability)
+17. [Future: Chat Portal](#17-future-chat-portal)
+18. [Open Questions](#18-open-questions)
 
 ---
 
@@ -60,17 +63,15 @@ Key design principles:
 │                                   │                                         │
 │                                   ▼                                         │
 │  ┌─────────────────────────────────────────────────────────────────────┐   │
-│  │                        Agent Platform (A2A)                          │   │
+│  │                    Agent Platform (Google A2A Protocol)              │   │
 │  ├─────────────────────────────────────────────────────────────────────┤   │
 │  │                                                                      │   │
-│  │   ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐  │   │
-│  │   │  Baron  │  │   Duc   │  │  Marie  │  │  Dede   │  │   HR    │  │   │
-│  │   │  (PM)   │  │ (Arch)  │  │  (QA)   │  │ (Code)  │  │ (Admin) │  │   │
-│  │   └─────────┘  └─────────┘  └─────────┘  └─────────┘  └─────────┘  │   │
+│  │   ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌──────────┐ │   │
+│  │   │  Baron  │  │   Duc   │  │  Marie  │  │  Dede   │  │ Reviewer │ │   │
+│  │   │  (PM)   │  │ (Arch)  │  │  (QA)   │  │ (Code)  │  │ (Review) │ │   │
+│  │   └─────────┘  └─────────┘  └─────────┘  └─────────┘  └──────────┘ │   │
 │  │                                                                      │   │
-│  │   ┌─────────┐  ┌─────────┐  ┌─────────┐                             │   │
-│  │   │ FinOps  │  │Security │  │ DevOps  │  ...more agents             │   │
-│  │   └─────────┘  └─────────┘  └─────────┘                             │   │
+│  │   Future agents (HR, FinOps, Security, DevOps) via Chat Portal       │   │
 │  │                                                                      │   │
 │  └─────────────────────────────────────────────────────────────────────┘   │
 │                                   │                                         │
@@ -91,7 +92,7 @@ Key design principles:
 | Farmer Code | SDLC automation (spec → code → test → review) | FastAPI, PWA |
 | Agent Platform | Reusable AI agents with A2A communication | Python, Claude SDK |
 | Agent Definitions | KB, prompts, MCP, skills per agent | GitHub monorepo |
-| Operator | Kubernetes operator for feature lifecycle | Python (kopf) |
+| Operator | Kubernetes operator for issue lifecycle | Python (kopf) |
 | Persistence | Workflow state, conversations, training data | DynamoDB |
 | Observability | Metrics, traces, logs | OpenTelemetry, Grafana |
 
@@ -106,9 +107,11 @@ All agent definitions live in a single monorepo (`farmer1st-ai-agents`):
 ```
 farmer1st-ai-agents/
 ├── agents/
-│   ├── baron/
+│   │
+│   │  # Workflow Agents (participate in SDLC phases)
+│   ├── baron/                   # PM - specify, plan, tasks
 │   │   ├── agent-card.json      # A2A agent card
-│   │   ├── config.yaml          # Runtime configuration
+│   │   ├── config.yaml          # Runtime configuration (incl. escalation target)
 │   │   ├── prompt.md            # System prompt
 │   │   ├── bio.md               # Agent persona
 │   │   ├── knowledge/           # KB files
@@ -117,53 +120,98 @@ farmer1st-ai-agents/
 │   │   ├── skills/              # Skill definitions
 │   │   ├── mcp/                 # MCP server configs
 │   │   └── scripts/             # Custom scripts
-│   ├── duc/
-│   ├── marie/
-│   ├── dede/
-│   ├── hr/
-│   ├── finops/
-│   └── ...
+│   ├── marie/                   # QA - test design, verification
+│   ├── dede/                    # Backend developer
+│   ├── dali/                    # Frontend developer
+│   ├── gus/                     # DevOps - gitops, releases
+│   ├── victor/                  # Docs QA - consistency, product docs
+│   ├── general/                 # Code reviewer
+│   ├── socrate/                 # Retro analyst - learning loop, RAG
+│   │
+│   │  # Issue Creators & Consultants
+│   ├── veuve/                   # Product Owner - features, roadmap
+│   ├── duc/                     # Tech Owner - architecture, tech debt
+│   │
+│   │  # Human Bridges (deterministic, not AI)
+│   ├── human-product/           # Bridge to product human
+│   └── human-tech/              # Bridge to technical human
+│
 └── shared/
     └── prompts/                 # Shared prompt fragments
 ```
 
-### 2.2 Agent Card (A2A)
+**Agent config.yaml example:**
 
-Each agent publishes an agent card describing its capabilities:
+```yaml
+# agents/dede/config.yaml
+name: dede
+domain: backend
+escalation_target: human-tech
+skills:
+  - implement.backend
+  - document.api
+```
+
+### 2.2 Agent Card (Google A2A Protocol)
+
+We adopt the [Google A2A Protocol](https://github.com/google/A2A) — an open standard for agent-to-agent communication.
+Each agent publishes an agent card at `/.well-known/agent.json`:
 
 ```json
 {
   "name": "baron",
   "description": "PM Agent - Creates specifications, plans, and task lists",
-  "version": "2.1.0",
   "url": "http://baron:8002",
+  "version": "2.1.0",
   "capabilities": {
     "streaming": true,
     "pushNotifications": false,
-    "humanEscalation": true
+    "stateTransitionHistory": true
   },
   "skills": [
     {
       "id": "specify.feature",
       "name": "Create Feature Specification",
-      "inputSchema": {"type": "object", "properties": {"description": {"type": "string"}}},
-      "outputSchema": {"type": "object", "properties": {"spec_path": {"type": "string"}}}
+      "description": "Generate a feature specification from a natural language description",
+      "tags": ["specification", "planning"],
+      "inputModes": ["text"],
+      "outputModes": ["text", "file"]
     },
     {
       "id": "specify.plan",
       "name": "Create Implementation Plan",
-      "inputSchema": {"type": "object", "properties": {"spec_path": {"type": "string"}}}
+      "description": "Generate an implementation plan from a specification",
+      "tags": ["planning", "architecture"],
+      "inputModes": ["text", "file"],
+      "outputModes": ["text", "file"]
     },
     {
       "id": "specify.tasks",
       "name": "Generate Task List",
-      "inputSchema": {"type": "object", "properties": {"plan_path": {"type": "string"}}}
+      "description": "Generate actionable tasks from a plan",
+      "tags": ["tasks", "planning"],
+      "inputModes": ["text", "file"],
+      "outputModes": ["text", "file"]
     }
   ],
   "defaultInputModes": ["text"],
-  "defaultOutputModes": ["text", "artifact"]
+  "defaultOutputModes": ["text"],
+  "authentication": {
+    "schemes": ["bearer"]
+  }
 }
 ```
+
+**A2A Protocol Compliance:**
+
+| A2A Feature | Support |
+|-------------|---------|
+| JSON-RPC 2.0 | Yes |
+| Agent discovery (`/.well-known/agent.json`) | Yes |
+| Task lifecycle states | Yes (`submitted`, `working`, `input-required`, `completed`, `failed`) |
+| SSE streaming | Yes (via `tasks/sendSubscribe`) |
+| Push notifications | Future |
+| gRPC | Future |
 
 ### 2.3 Versioning Strategy
 
@@ -189,7 +237,74 @@ def get_agent_versions(agent_name: str, limit: int = 5) -> list[str]:
 
 ### 2.4 SDK Abstraction Layer
 
-Abstract the LLM provider to allow swapping Claude for other models:
+We use the **Claude Agent SDK** (`claude_agent_sdk` package), which leverages Claude Code's
+built-in OAuth authentication. **No API key is required** — authentication is handled
+via Claude Pro/Max subscription login.
+
+> **IMPORTANT:** Do NOT use the `anthropic` Python package with API keys. The Claude Agent
+> SDK provides a higher-level abstraction with built-in tools and MCP server support.
+> See `../sdk-agent-poc` for a working reference implementation.
+
+**Claude Agent SDK Pattern:**
+
+```python
+from claude_agent_sdk import (
+    ClaudeSDKClient,
+    ClaudeAgentOptions,
+    AssistantMessage,
+    ResultMessage,
+    TextBlock,
+    ToolUseBlock,
+    tool,
+    create_sdk_mcp_server,
+)
+
+# No API key needed — uses Claude Code's built-in OAuth authentication
+options = ClaudeAgentOptions(
+    allowed_tools=[
+        # Built-in tools
+        "Read", "Write", "Edit", "Glob", "Grep",  # File operations
+        "Bash",                                     # Shell commands
+        "WebSearch",                                # Web search
+        # Custom MCP tools
+        "mcp__custom-tools__my_tool",
+    ],
+    permission_mode="acceptEdits",
+    mcp_servers={"custom-tools": custom_tools_server},
+    system_prompt=AGENT_SYSTEM_PROMPT,
+    cwd="/path/to/worktree",
+)
+
+async with ClaudeSDKClient(options=options) as client:
+    await client.query("Your prompt here")
+    async for message in client.receive_response():
+        if isinstance(message, AssistantMessage):
+            for block in message.content:
+                if isinstance(block, TextBlock):
+                    print(block.text)
+                elif isinstance(block, ToolUseBlock):
+                    print(f"Using tool: {block.name}")
+```
+
+**Custom Tools via MCP:**
+
+```python
+from claude_agent_sdk import tool, create_sdk_mcp_server
+
+@tool("extract_confidence", "Extract confidence score from response", {"response": str})
+async def extract_confidence(args: dict) -> dict:
+    # Custom logic to determine confidence
+    confidence = analyze_confidence(args["response"])
+    return {"content": [{"type": "text", "text": str(confidence)}]}
+
+custom_tools_server = create_sdk_mcp_server(
+    name="agent-tools",
+    version="1.0.0",
+    tools=[extract_confidence, ...]
+)
+```
+
+**Abstraction for Future Providers:**
 
 ```python
 from abc import ABC, abstractmethod
@@ -202,75 +317,89 @@ class AgentResponse:
     artifacts: list[dict]
     status: str  # "completed", "input-required", "failed"
 
-@dataclass
-class AgentCard:
-    name: str
-    version: str
-    skills: list[dict]
-    capabilities: dict
-
 class AgentRuntime(ABC):
     """Abstract base for agent runtimes. Swap implementations without changing agents."""
 
     @abstractmethod
-    async def invoke(
-        self,
-        prompt: str,
-        context: dict,
-        session_id: str
-    ) -> AgentResponse:
-        """Invoke the agent with a prompt."""
-        pass
-
-    @abstractmethod
-    def get_agent_card(self) -> AgentCard:
-        """Return the agent's capability card."""
+    async def invoke(self, prompt: str, context: dict, session_id: str) -> AgentResponse:
         pass
 
 class ClaudeAgentRuntime(AgentRuntime):
-    """Implementation using Claude Agent SDK (Claude Code CLI wrapper)."""
+    """Implementation using Claude Agent SDK (OAuth, not API key)."""
 
-    def __init__(self, agent_config: dict, credentials_path: str):
+    def __init__(self, agent_config: dict, worktree_path: str):
         self.config = agent_config
-        self.credentials = credentials_path
-        # Claude SDK initialization
+        self.worktree_path = worktree_path
+        self.options = ClaudeAgentOptions(
+            allowed_tools=agent_config.get("allowed_tools", []),
+            system_prompt=agent_config.get("system_prompt", ""),
+            cwd=worktree_path,
+        )
 
     async def invoke(self, prompt: str, context: dict, session_id: str) -> AgentResponse:
-        # Route to session-specific conversation file
-        conversation_path = f"/conversations/{session_id}.json"
-        # Invoke Claude Code CLI with session isolation
-        ...
+        async with ClaudeSDKClient(options=self.options) as client:
+            await client.query(prompt)
+            # Process response and extract confidence...
 
 class FutureProviderRuntime(AgentRuntime):
-    """Future: OpenAI, Gemini, local models, etc."""
+    """Future: OpenAI, Gemini, local models (would need API keys)."""
     pass
 ```
 
 ### 2.5 Agent Pod Architecture
 
-**Single pod per agent, single version (operator-injected):**
+**Pod-per-agent-per-issue (operator-injected):**
 
-The Kubernetes Operator (Section 4.3) spawns agent pods with a specific version defined
-in environment variables. Each pod loads only that version at startup—no multi-version
-caching or hot-reload complexity.
+The Kubernetes Operator (Section 4.3) spawns agent pods for each feature with a specific
+version defined in environment variables. Each pod loads only that version at startup—no
+multi-version caching or hot-reload complexity.
+
+**v1 Pod Lifecycle:**
+- Pods stay alive for the **entire feature duration** (including human escalation waits)
+- Pods terminate only when the issue workflow completes (success or failure)
+- Simple polling model for human input (see Section 6.1)
+
+**Future Enhancement:**
+- Stop-and-go pattern (Section 11.2) where pods checkpoint and exit during human waits
+- More resource-efficient but requires webhook infrastructure
+
+**Why pod-per-issue (not shared pools)?**
+
+| Shared Pools (rejected) | Pod-per-Feature (adopted) |
+|-------------------------|---------------------------|
+| Complex routing/affinity | Simple: one pod = one feature |
+| Session context leakage risk | Natural isolation via worktree |
+| Memory pressure from many sessions | Clean pod lifecycle |
+| Harder to debug | Clear lineage per issue |
+
+We considered shared agent pools for efficiency but chose pod-per-issue for v1 because:
+
+1. **Simplicity**: No complex routing or session affinity
+2. **Isolation**: Natural process + filesystem isolation via worktree
+3. **Cost**: EKS pods are cheap, and they're ephemeral (die on completion)
+4. **Debugging**: One pod = one feature = easy to trace
+
+> **Future Optimization:** If costs become significant at scale, migrate to shared
+> pools with worktree-based process isolation.
 
 ```
-baron-pod (spawned by operator for feature-auth-123)
-├── Environment:
-│   AGENT_NAME=baron
-│   AGENT_VERSION=2.0.0
-│   WORKTREE_PATH=/volumes/worktrees/feature-auth-123
-│
-├── Startup:
-│   1. Fetch baron@2.0.0 config from GitHub (single version)
-│   2. Load config to /agent/config/
-│   3. Ready to serve
-│
-└── Request handling:
-    POST /invoke
-    → Load config from /agent/config/ (pre-loaded at startup)
-    → Execute via SDK abstraction
-    → Return response with confidence score
+Namespace: fc-issue-auth-123/        # Ephemeral namespace per issue
+└── Pod: baron                        # Simple name within namespace
+    ├── Environment:
+    │   AGENT_NAME=baron
+    │   AGENT_VERSION=2.0.0
+    │   WORKTREE_PATH=/volumes/worktrees/issue-auth-123
+    │
+    ├── Startup:
+    │   1. Fetch baron@2.0.0 config from GitHub (single version)
+    │   2. Load config to /agent/config/
+    │   3. Ready to serve
+    │
+    └── Request handling:
+        POST /invoke (http://baron:8002 within namespace)
+        → Load config from /agent/config/ (pre-loaded at startup)
+        → Execute via SDK abstraction
+        → Return response with confidence score
 ```
 
 **Why single-version pods?**
@@ -280,7 +409,7 @@ baron-pod (spawned by operator for feature-auth-123)
 | Complex version routing | Simple: one pod = one version |
 | Memory overhead for cached versions | Minimal footprint |
 | Race conditions on refresh | Immutable after startup |
-| Harder to debug | Clear lineage per feature |
+| Harder to debug | Clear lineage per issue |
 
 **Pod lifecycle:**
 
@@ -300,9 +429,10 @@ class AgentPod:
             agent=self.agent_name,
             version=self.agent_version,
         )
+        # Claude Agent SDK uses OAuth from Claude Code — no API key needed
         self.runtime = ClaudeAgentRuntime(
-            config=self.config,
-            credentials_path="/secrets/credentials.json",
+            agent_config=self.config,
+            worktree_path=self.worktree_path,
         )
 
     @app.post("/invoke")
@@ -327,66 +457,159 @@ a new one with the updated `AGENT_VERSION` environment variable.
 Farmer Code automates the software development lifecycle using AI agents:
 
 ```
-Feature Request → Spec → Plan → Tasks → Tests → Code → Verify → Review → Done
+Issue Created → READY label → SPECIFY → PLAN → TASKS → TEST_DESIGN → IMPLEMENT → VERIFY → DOCS_QA → REVIEW → RELEASE → RETRO
 ```
 
 ### 3.2 Components
 
 | Component | Purpose | Deployment |
 |-----------|---------|------------|
-| PWA (UI) | Kanban board, feature management | CloudFlare Pages |
-| API | Backend for UI, creates FeatureWorkflow CRDs | EKS pod |
-| Operator | Watches CRDs, manages feature pods | EKS pod |
-| Feature Orchestrator | Per-feature workflow state machine | Ephemeral pod |
-| Agent Pods | Baron, Duc, Marie, Dede, Reviewer | Ephemeral pods |
+| PWA (UI) | Kanban board, issue management | CloudFlare Pages |
+| API | Backend for UI, creates IssueWorkflow CRDs | EKS pod |
+| Operator | Watches CRDs, manages issue pods | EKS pod |
+| Issue Orchestrator | Per-issue workflow state machine | Long-running pod |
+| Agent Pods | All agents spawn per issue | Long-running pods |
 
-### 3.3 Workflow Phases
+### 3.3 Agent Roster
 
-The workflow is **not linear**—it supports feedback loops as defined in Section 10.
-Agents can trigger transitions back to earlier phases when issues are discovered.
+**Workflow Agents** (participate in phases):
+
+| Agent | Role | Domain | Escalates To |
+|-------|------|--------|--------------|
+| Baron | PM - specify, plan, tasks | — | Smart (Product or Tech) |
+| Marie | QA - test design, verification | `test` | HumanTech |
+| Dede | Backend developer | `backend` (includes docs) | HumanTech |
+| Dali | Frontend developer | `frontend` (includes docs) | HumanTech |
+| Gus | DevOps - gitops, releases | `gitops` (includes docs) | HumanTech |
+| Victor | Docs QA - consistency, product docs | — | Smart (Product or Tech) |
+| General | Code reviewer | — | HumanTech |
+| Socrate | Retro analyst - learning loop, RAG | — | Smart (Product or Tech) |
+
+**Issue Creators & Consultants** (can initiate issues, consulted on-demand):
+
+| Agent | Role | Creates Issues For | Escalates To |
+|-------|------|-------------------|--------------|
+| Veuve | Product Owner - features, roadmap, vision | Product features | HumanProduct |
+| Duc | Tech Owner - architecture, tech debt, infra | Technical issues | HumanTech |
+
+**Human Bridges** (deterministic code, not AI):
+
+| Agent | Role | Channel |
+|-------|------|---------|
+| HumanProduct | Bridge to product human | Slack, GitHub |
+| HumanTech | Bridge to technical human | Slack, GitHub |
+
+### 3.4 Issue Lifecycle
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                              Issue Lifecycle                                     │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                  │
+│  GitHub Issue Created                                                            │
+│  (by Veuve, Duc, human, or future: Sentry/observability)                        │
+│       │                                                                          │
+│       ▼                                                                          │
+│  ┌─────────────────────────────────────────────────────────────────────────┐    │
+│  │  BACKLOG (no "READY" label)                                              │    │
+│  │  - Visible in Kanban                                                     │    │
+│  │  - Humans chat with agents via Chat Portal to refine                     │    │
+│  │  - Labels define type: feature, bug, tech-debt, infra                    │    │
+│  └─────────────────────────────────────────────────────────────────────────┘    │
+│       │                                                                          │
+│       │ Human adds "READY" label                                                 │
+│       ▼                                                                          │
+│  ┌─────────────────────────────────────────────────────────────────────────┐    │
+│  │  WORKFLOW STARTS AUTOMATICALLY                                           │    │
+│  │  - IssueWorkflow CRD created                                             │    │
+│  │  - All agent pods spawned                                                │    │
+│  │  - Orchestrator begins SPECIFY phase                                     │    │
+│  └─────────────────────────────────────────────────────────────────────────┘    │
+│                                                                                  │
+└─────────────────────────────────────────────────────────────────────────────────┘
+```
+
+**Issue Types (labels):**
+
+| Label | Description | Example |
+|-------|-------------|---------|
+| `feature` | New user-facing functionality | "Add user authentication" |
+| `bug` | Defect fix | "Login fails on Safari" |
+| `tech-debt` | Refactoring, cleanup | "Migrate to new ORM" |
+| `infra` | Infrastructure changes | "Add Redis caching layer" |
+
+### 3.5 Workflow Phases
+
+The workflow is **strictly linear** with feedback loops for error recovery (Section 10).
+Each phase has **one owner agent**. Agents can consult any other agent during their phase.
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────────────┐
-│                        Feature Workflow (with Feedback Loops)                     │
+│                              Issue Workflow                                       │
 ├──────────────────────────────────────────────────────────────────────────────────┤
 │                                                                                   │
-│  ┌──────────┐   ┌──────────┐   ┌──────────┐   ┌──────────┐   ┌──────────┐        │
-│  │  Baron   │   │  Baron   │   │  Baron   │   │  Marie   │   │  Dede    │        │
-│  │ SPECIFY  │──▶│   PLAN   │──▶│  TASKS   │──▶│  TESTS   │──▶│IMPLEMENT │        │
-│  └──────────┘   └──────────┘   └──────────┘   └──────────┘   └──────────┘        │
-│       ▲              ▲                                            │              │
-│       │              │                                            ▼              │
-│       │              │         ┌──────────────────────────────────────────┐      │
-│       │              │         │           FEEDBACK TRIGGERS              │      │
-│       │              │         ├──────────────────────────────────────────┤      │
-│       │              │         │ • spec_ambiguity    → back to SPECIFY    │      │
-│       │              │         │ • plan_infeasible   → back to PLAN       │      │
-│       │              │         │ • test_failure      → back to IMPLEMENT  │      │
-│       │              │         │ • security_issue    → back to PLAN       │      │
-│       │              │         │ • minor_changes     → back to IMPLEMENT  │      │
-│       │              │         └──────────────────────────────────────────┘      │
-│       │              │                                            │              │
-│       │              │                                            ▼              │
-│       │              │                             ┌──────────┐   ┌──────────┐   │
-│       │              │                             │  Marie   │   │ Reviewer │   │
-│       │              │                             │  VERIFY  │──▶│  REVIEW  │──▶│ Done
-│       │              │                             └──────────┘   └──────────┘   │
-│       │              │                                  │              │         │
-│       │              │    feedback:test_failure         │              │         │
-│       │              │◀─────────────────────────────────┘              │         │
-│       │              │                                                 │         │
-│       │              │    feedback:architectural_rework                │         │
-│       │              │◀────────────────────────────────────────────────┘         │
-│       │                                                                │         │
-│       │              feedback:spec_ambiguity (from IMPLEMENT)          │         │
-│       │◀───────────────────────────────────────────────────────────────┘         │
+│  ┌──────────┐   ┌──────────┐   ┌──────────┐   ┌──────────┐                       │
+│  │  Baron   │   │  Baron   │   │  Baron   │   │  Marie   │                       │
+│  │ SPECIFY  │──▶│   PLAN   │──▶│  TASKS   │──▶│TEST_DESIGN│                      │
+│  └──────────┘   └──────────┘   └──────────┘   └──────────┘                       │
+│                                                     │                             │
+│                                                     ▼                             │
+│  ┌────────────────────────────────────────────────────────────────────────────┐  │
+│  │                    IMPLEMENT (sequential by domain)                         │  │
+│  │  ┌──────────┐   ┌──────────┐   ┌──────────┐                                │  │
+│  │  │  Dede    │──▶│  Dali    │──▶│   Gus    │  Each agent scans tasks.md    │  │
+│  │  │ backend  │   │ frontend │   │  gitops  │  and does their domain tasks   │  │
+│  │  └──────────┘   └──────────┘   └──────────┘  (no-op if no matching tasks)  │  │
+│  └────────────────────────────────────────────────────────────────────────────┘  │
+│                                                     │                             │
+│                                                     ▼                             │
+│  ┌──────────┐   ┌──────────┐   ┌──────────┐   ┌──────────┐   ┌──────────┐       │
+│  │  Marie   │   │  Victor  │   │ General  │   │   Gus    │   │   Gus    │       │
+│  │  VERIFY  │──▶│ DOCS_QA  │──▶│  REVIEW  │──▶│ RELEASE  │──▶│ RELEASE  │       │
+│  └──────────┘   └──────────┘   └──────────┘   │ STAGING  │   │  PROD    │       │
+│                                                └──────────┘   └──────────┘       │
+│                                                                    │              │
+│                                                                    ▼              │
+│  ┌────────────────────────────────────────────────────────────────────────────┐  │
+│  │                           RETRO (Learning Loop)                             │  │
+│  │  ┌──────────┐                                                              │  │
+│  │  │ Socrate  │  Analyzes: confidence scores, escalations, A2A conversations │  │
+│  │  │  RETRO   │  Outputs: PRs for prompt/KB improvements + reports           │  │
+│  │  └──────────┘  Human approves changes via Slack (approve/change/reject)    │  │
+│  └────────────────────────────────────────────────────────────────────────────┘  │
+│                                                     │                             │
+│                                                     ▼                             │
+│                                                   Done                            │
 │                                                                                   │
 │  ┌────────────────────────────────────────────────────────────────────────────┐  │
-│  │  Duc (Architecture Advisor) - consulted on-demand during PLAN, IMPLEMENT  │  │
+│  │                         FEEDBACK TRIGGERS                                   │  │
+│  │  • spec_ambiguity    → back to SPECIFY                                     │  │
+│  │  • plan_infeasible   → back to PLAN                                        │  │
+│  │  • test_failure      → back to IMPLEMENT                                   │  │
+│  │  • docs_inconsistent → back to IMPLEMENT                                   │  │
+│  │  • review_changes    → back to IMPLEMENT                                   │  │
 │  └────────────────────────────────────────────────────────────────────────────┘  │
+│                                                                                   │
+│  Note: RELEASE_DEV is automated (CI/CD), no agent involved                       │
 │                                                                                   │
 └──────────────────────────────────────────────────────────────────────────────────┘
 ```
+
+**Phase Details:**
+
+| Phase | Owner | Input | Output |
+|-------|-------|-------|--------|
+| SPECIFY | Baron | GitHub issue | `.specify/spec.md` |
+| PLAN | Baron | spec.md | `.specify/plan.md` |
+| TASKS | Baron | plan.md | `.specify/tasks.md` (with domain tags) |
+| TEST_DESIGN | Marie | tasks.md | Test cases in `tests/` |
+| IMPLEMENT | Dede, Dali, Gus | tasks.md | Code + docs (each does their domain) |
+| VERIFY | Marie | Code + tests | Test results, integrity check |
+| DOCS_QA | Victor | All docs | Consistency check, product docs update |
+| REVIEW | General | PR | Review comments, approval |
+| RELEASE_STAGING | Gus | Approved PR | Deployed to staging |
+| RELEASE_PROD | Gus | Staging verified | Deployed to production |
+| RETRO | Socrate | All events + conversations | PRs for improvements + reports |
 
 **Feedback Loop Constraints (from Section 10.4):**
 
@@ -396,37 +619,95 @@ Agents can trigger transitions back to earlier phases when issues are discovered
 | Max same transition | 2 | Detect oscillation patterns |
 | Escalation on breach | Human | Workflow pauses for intervention |
 
-**Agent Roles:**
+### 3.6 Domain-Based Task Routing
 
-| Agent | Role | Artifacts |
-|-------|------|-----------|
-| Baron | PM - spec, plan, tasks | `.specify/spec.md`, `.specify/plan.md`, `.specify/tasks.md` |
-| Duc | Architecture advisor (on-demand) | Consulted by Baron, Dede |
-| Marie | QA - write tests, verify tests pass | `tests/` |
-| Dede | Developer - implement code | `src/` |
-| Reviewer | Code review | PR comments, approval |
+Baron generates `tasks.md` with explicit domain tags. Each implementing agent
+scans the task list and executes only tasks matching their domain.
 
-### 3.4 Orchestrator Per Feature
+**Example tasks.md:**
 
-Each feature gets its own orchestrator Job (not a long-running pod). The orchestrator
-implements the **Stop-and-Go pattern** (Section 11.2) and **Event Sourcing** (Section 9):
+```markdown
+## Tasks for issue-auth-123
 
-- **No `await` for human input** — checkpoint and exit instead
-- **State from events** — rehydrate on restart, never store mutable state
-- **Idempotent execution** — safe to restart at any point
+- [ ] Create user model and auth endpoints `domain:backend` @dede
+- [ ] Create login/register React components `domain:frontend` @dali
+- [ ] Add auth service Kubernetes manifests `domain:gitops` @gus
+- [ ] Write unit tests for auth service `domain:test` @marie
+```
+
+**Domain assignments:**
+
+| Domain | Agent | Includes |
+|--------|-------|----------|
+| `backend` | Dede | Backend code + API documentation |
+| `frontend` | Dali | Frontend code + UI documentation |
+| `gitops` | Gus | K8s manifests + infrastructure docs |
+| `test` | Marie | Test cases |
+
+**Execution order:** `backend` → `frontend` → `gitops`
+
+If an agent has no tasks in their domain, they no-op and the workflow continues.
+
+### 3.7 Agent Consultation (A2A)
+
+Any agent can consult any other agent during their phase via A2A. This is not
+special to any agent — Duc, Veuve, or any other agent can be consulted.
 
 ```python
-class FeatureOrchestrator:
-    """Event-sourced orchestrator with stop-and-go semantics."""
+class AnyAgent:
+    async def do_work(self) -> Result:
+        # Agent identifies a question outside their expertise
+        if self.needs_consultation():
+            response = await self.a2a_client.send_task(
+                agent="duc",  # or "veuve", "marie", etc.
+                skill="clarify.architecture",
+                message={"question": "Should this use event sourcing or CRUD?"}
+            )
+
+            # If consulted agent has low confidence, THEY escalate (not us)
+            # We receive the final answer (possibly human-verified)
+            ...
+```
+
+**Escalation is vertical:** If Duc is consulted and has <80% confidence, Duc
+escalates to HumanTech. The requesting agent receives the final answer.
+
+**Audit trail:** All consultations are logged as events:
+```python
+AgentConsulted(from_agent="baron", to_agent="duc", question="...", response="...", confidence=85)
+```
+
+### 3.8 Orchestrator Per Issue
+
+Each issue gets its own long-running orchestrator pod. The orchestrator implements
+**Event Sourcing** (Section 9) for auditability and crash recovery:
+
+- **State from events** — rehydrate on restart, never store mutable state
+- **Idempotent execution** — safe to restart at any point
+- **Polling for human input** — v1 uses polling, future versions may use webhooks
+
+**v1 Lifecycle (Polling):**
+- Orchestrator pod stays alive for the entire feature duration
+- When human input is needed, the orchestrator polls GitHub for responses
+- Simple, predictable, easy to debug
+
+**Future Enhancement (Stop-and-Go):**
+- Orchestrator checkpoints state and exits when waiting for human input
+- Webhook triggers new Job when human responds
+- More resource-efficient for long-running features
+
+```python
+class IssueOrchestrator:
+    """Event-sourced orchestrator with polling for human input (v1)."""
 
     def __init__(
         self,
-        feature_id: str,
+        issue_id: str,
         workflow_config: WorkflowDefinition,
         event_store: EventStore,
         projection: WorkflowProjection,
     ):
-        self.feature_id = feature_id
+        self.issue_id = issue_id
         self.workflow_config = workflow_config
         self.event_store = event_store
         self.projection = projection
@@ -434,16 +715,16 @@ class FeatureOrchestrator:
 
     async def run(self) -> OrchestratorResult:
         """
-        Run workflow with automatic recovery and stop-and-go semantics.
+        Run workflow with automatic recovery.
 
-        This method is designed to be called by a Kubernetes Job. It will:
-        1. Rehydrate state from the event store
+        This method runs until the feature is complete or fails:
+        1. Rehydrate state from the event store (crash recovery)
         2. Resume from wherever we left off
-        3. Exit (not wait) if human input is required
-        4. Be restarted by a new Job when input arrives
+        3. Poll for human input when escalation is needed (v1)
+        4. Continue until workflow completes
         """
         # === REHYDRATE STATE FROM EVENTS (Section 9.4) ===
-        state = await self.projection.get_state(self.feature_id)
+        state = await self.projection.get_state(self.issue_id)
 
         # Already done? Exit immediately.
         if state.status == "completed":
@@ -453,48 +734,79 @@ class FeatureOrchestrator:
         if state.status == "failed":
             return OrchestratorResult(status="already_failed", error=state.error)
 
-        # === HANDLE PENDING ESCALATION (Stop-and-Go) ===
-        if state.pending_escalation:
-            # Check if human responded (don't wait!)
-            response = await self._check_escalation_response(state.pending_escalation)
-            if response is None:
-                # Still waiting — exit, will be resumed by webhook
-                return OrchestratorResult(status="waiting_human")
+        # === EXECUTE WORKFLOW (with feedback loop support) ===
+        while True:
+            state = await self.projection.get_state(self.issue_id)
+            phases_to_run = self._get_remaining_phases(state)
 
-            # Human responded — record and continue
-            await self.event_store.append(EscalationResolved(
-                feature_id=self.feature_id,
-                agent=state.pending_escalation["agent"],
-                human_response=response.text,
-                responded_by=response.user,
-            ))
-            state = await self.projection.get_state(self.feature_id)
+            if not phases_to_run:
+                break  # All phases complete
 
-        # === EXECUTE REMAINING PHASES ===
-        phases_to_run = self._get_remaining_phases(state)
+            phase = phases_to_run[0]  # Process one phase at a time
 
-        for phase in phases_to_run:
             # Record phase start
             await self.event_store.append(PhaseStarted(
-                feature_id=self.feature_id,
+                issue_id=self.issue_id,
                 phase=phase.name,
                 agent=phase.agent,
             ))
 
-            # Execute phase
-            result = await self._execute_phase(phase)
+            # Execute phase with error handling
+            try:
+                result = await self._execute_phase(phase)
+            except Exception as e:
+                # === HANDLE PHASE FAILURE ===
+                error_code = type(e).__name__
+                is_retryable = isinstance(e, (TimeoutError, ConnectionError, RateLimitError))
 
-            # === STOP-AND-GO: Exit on input-required (Section 11.2) ===
+                await self.event_store.append(PhaseFailed(
+                    issue_id=self.issue_id,
+                    phase=phase.name,
+                    agent=phase.agent,
+                    error_code=error_code,
+                    error_message=str(e),
+                    retryable=is_retryable,
+                ))
+
+                if is_retryable and self._can_retry(phase):
+                    logger.warning(f"Phase {phase.name} failed with retryable error, will retry: {e}")
+                    await asyncio.sleep(self.config.retry_backoff.total_seconds())
+                    continue  # Retry the same phase
+
+                # Non-retryable or max retries exceeded → fail workflow
+                logger.error(f"Phase {phase.name} failed permanently: {e}")
+                await self.event_store.append(WorkflowFailed(
+                    issue_id=self.issue_id,
+                    reason=str(e),
+                    failed_phase=phase.name,
+                    recoverable=is_retryable,
+                ))
+                return OrchestratorResult(status="failed", error=str(e))
+
+            # === HANDLE ESCALATION (v1: polling) ===
             if result.status == "input_required":
                 await self.event_store.append(EscalationRequested(
-                    feature_id=self.feature_id,
+                    issue_id=self.issue_id,
                     agent=phase.agent,
                     question=result.question,
                     confidence=result.confidence,
                 ))
-                # EXIT — do NOT await. Job terminates here.
-                # A new Job will be spawned when human responds.
-                return OrchestratorResult(status="waiting_human", checkpoint=phase.name)
+
+                # v1: Poll for human response (pod stays alive)
+                response = await self._poll_for_human_response(
+                    question=result.question,
+                    timeout=self.config.escalation_timeout,
+                )
+
+                await self.event_store.append(EscalationResolved(
+                    issue_id=self.issue_id,
+                    agent=phase.agent,
+                    human_response=response.text,
+                    responded_by=response.user,
+                ))
+
+                # Re-execute phase with human input
+                result = await self._execute_phase(phase, human_context=response)
 
             # === HANDLE FEEDBACK LOOPS (Section 10) ===
             if result.feedback_trigger:
@@ -504,17 +816,17 @@ class FeatureOrchestrator:
                 )
                 if next_phase:
                     await self.event_store.append(FeedbackRequested(
-                        feature_id=self.feature_id,
+                        issue_id=self.issue_id,
                         from_phase=phase.name,
                         to_phase=next_phase,
                         reason=result.feedback_trigger,
                     ))
-                    # Loop back — re-run from earlier phase
+                    # Loop continues, _get_remaining_phases will return from target phase
                     continue
 
             # === RECORD SUCCESS ===
             await self.event_store.append(PhaseCompleted(
-                feature_id=self.feature_id,
+                issue_id=self.issue_id,
                 phase=phase.name,
                 agent=phase.agent,
                 confidence=result.confidence,
@@ -522,7 +834,7 @@ class FeatureOrchestrator:
             ))
 
         # === WORKFLOW COMPLETE ===
-        await self.event_store.append(WorkflowCompleted(feature_id=self.feature_id))
+        await self.event_store.append(WorkflowCompleted(issue_id=self.issue_id))
         return OrchestratorResult(status="completed")
 
     def _get_remaining_phases(self, state: WorkflowState) -> list[Phase]:
@@ -532,14 +844,42 @@ class FeatureOrchestrator:
             return self.workflow_config.get_phases_from(state.pending_feedback["to_phase"])
         # Normal: skip completed phases
         return [p for p in self.workflow_config.phases if p.name not in state.phases_completed]
+
+    async def _poll_for_human_response(
+        self,
+        question: str,
+        timeout: timedelta,
+    ) -> HumanResponse:
+        """Poll GitHub for human response (v1 implementation)."""
+        deadline = datetime.now() + timeout
+        while datetime.now() < deadline:
+            response = await self.github.check_for_response(
+                issue=self.issue_number,
+                comment_id=self.escalation_comment_id,
+            )
+            if response:
+                return response
+            await asyncio.sleep(self.config.poll_interval.total_seconds())
+
+        raise EscalationTimeoutError(f"No response within {timeout}")
 ```
 
-**Job lifecycle (Stop-and-Go):**
+**v1 Pod lifecycle (Polling):**
 
 ```
-Job 1: Rehydrate → SPECIFY → PLAN → TASKS → needs human input → CHECKPOINT → EXIT
+Pod: Start → SPECIFY → PLAN → TASKS → needs human input → POLL → human responds
+                                                                      ↓
+     ← ← ← ← ← ← ← ← ← ← ← ← ← ← ← ← ← ← ← ← ← ← ← ← ← ← ← ← ← ← ← ←
+     ↓
+     IMPLEMENT → VERIFY → REVIEW → Done → Pod terminates
+```
+
+**Future: Stop-and-Go lifecycle (webhook-triggered):**
+
+```
+Job 1: Start → SPECIFY → PLAN → needs input → CHECKPOINT → EXIT (pod dies)
                                                     ↓
-                                        (hours/days pass)
+                                        (hours/days pass, no resources used)
                                                     ↓
                                         Human responds via GitHub
                                                     ↓
@@ -548,20 +888,170 @@ Job 1: Rehydrate → SPECIFY → PLAN → TASKS → needs human input → CHECKP
 Job 2: Rehydrate → Skip completed → IMPLEMENT → VERIFY → REVIEW → Done
 ```
 
-This pattern eliminates idle resource consumption while maintaining full auditability
-through the event store.
+The v1 polling approach is simpler to implement and debug. The stop-and-go pattern
+can be introduced later when resource efficiency becomes a priority.
+
+### 3.9 Learning Loop (RETRO Phase)
+
+After RELEASE_PROD, Socrate runs the RETRO phase to analyze the issue lifecycle and
+propose improvements to agent prompts and knowledge bases.
+
+**What Socrate Analyzes:**
+
+| Data Source | What Socrate Looks For |
+|-------------|------------------------|
+| Event store | Phase durations, bottlenecks, feedback loops triggered |
+| Confidence scores | Which agents struggled? Patterns in low-confidence responses |
+| Escalations | What questions went to humans? What were the answers? |
+| A2A conversations | What did agents ask each other? Gaps in knowledge? |
+| Human responses | What corrections did humans make? Training data |
+
+**What Socrate Produces:**
+
+1. **PRs to `farmer1st-ai-agents`**:
+   - Prompt improvements (clearer instructions, edge cases)
+   - KB additions (new knowledge from human responses)
+   - Skill refinements
+
+2. **Reports/Dashboards**:
+   - Issue retrospective summary
+   - Agent performance metrics
+   - Escalation patterns
+
+**Approval Flow (v1):**
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                        Socrate RETRO Approval Flow                               │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                  │
+│  Socrate analyzes issue-auth-123 lifecycle                                       │
+│       │                                                                          │
+│       ▼                                                                          │
+│  Socrate creates PR to farmer1st-ai-agents:                                      │
+│  "Improve Baron's planning prompt for auth-related features"                     │
+│       │                                                                          │
+│       ▼                                                                          │
+│  Socrate posts to Slack (smart: HumanTech or HumanProduct):                      │
+│  ┌─────────────────────────────────────────────────────────────────────────┐    │
+│  │ 📊 RETRO: issue-auth-123 complete                                        │    │
+│  │                                                                          │    │
+│  │ Proposed improvement: Baron planning prompt                              │    │
+│  │ PR: github.com/farmer1st/ai-agents/pull/456                             │    │
+│  │                                                                          │    │
+│  │ Reply: approve | change <feedback> | reject                              │    │
+│  └─────────────────────────────────────────────────────────────────────────┘    │
+│       │                                                                          │
+│       ▼                                                                          │
+│  Human reviews and responds                                                      │
+│       │                                                                          │
+│       ├── "approve" → Socrate merges PR                                          │
+│       ├── "change: also add example for OAuth" → Socrate updates PR, re-asks     │
+│       └── "reject" → Socrate closes PR, logs reason                              │
+│                                                                                  │
+└─────────────────────────────────────────────────────────────────────────────────┘
+```
+
+**Future Enhancement: Auto-Approve:**
+
+When confidence in Socrate's suggestions is high (based on historical approval rates),
+low-risk changes can be auto-merged:
+
+```python
+class SocrateAgent:
+    async def propose_improvement(self, improvement: Improvement) -> None:
+        pr = await self.create_pr(improvement)
+
+        if self.can_auto_approve(improvement):
+            # Future: auto-merge low-risk, high-confidence improvements
+            await self.merge_pr(pr)
+            await self.notify_humans(pr, action="auto-merged")
+        else:
+            # v1: always ask human
+            await self.request_human_approval(pr)
+
+    def can_auto_approve(self, improvement: Improvement) -> bool:
+        # Future: based on improvement type, historical approval rate, risk score
+        return False  # v1: never auto-approve
+```
 
 ---
 
 ## 4. Kubernetes Infrastructure
 
-### 4.1 Custom Resource Definition (CRD)
+### 4.1 Namespace Strategy
+
+We use **namespace-per-issue** for workflow isolation and **a permanent namespace** for
+Chat Portal agents:
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                           Kubernetes Namespaces                                  │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                  │
+│  ai-agents/                          # PERMANENT - Chat Portal agents            │
+│  ├── baron          (always running)                                            │
+│  ├── duc            (always running)                                            │
+│  ├── veuve          (always running)                                            │
+│  ├── human-product  (always running)                                            │
+│  └── human-tech     (always running)                                            │
+│                                                                                  │
+│  fc-issue-auth-123/                  # EPHEMERAL - per Issue Workflow            │
+│  ├── orchestrator                                                               │
+│  ├── baron                                                                      │
+│  ├── marie                                                                      │
+│  ├── dede                                                                       │
+│  ├── dali                                                                       │
+│  ├── gus                                                                        │
+│  ├── victor                                                                     │
+│  ├── general                                                                    │
+│  ├── socrate                                                                    │
+│  ├── veuve                                                                      │
+│  ├── duc                                                                        │
+│  ├── human-product                                                              │
+│  └── human-tech                                                                 │
+│      ↑                                                                          │
+│      └── Namespace deleted when workflow completes                              │
+│                                                                                  │
+│  fc-issue-payment-456/               # Another ephemeral namespace               │
+│  └── ...                                                                        │
+│                                                                                  │
+│  farmercode/                         # Infrastructure namespace                  │
+│  ├── farmercode-api                                                             │
+│  └── farmercode-operator                                                        │
+│                                                                                  │
+└─────────────────────────────────────────────────────────────────────────────────┘
+```
+
+**Why namespace-per-issue?**
+
+| Aspect | Single Namespace (rejected) | Namespace-per-Issue (adopted) |
+|--------|----------------------------|------------------------------|
+| Pod naming | `baron-issue-auth-123` | `baron` (simple) |
+| Cleanup | Delete pods by label | Delete namespace (cascades) |
+| Isolation | Shared resources | Complete isolation |
+| Resource quotas | Complex per-label | Simple per-namespace |
+| Service discovery | All in one namespace | Clean per-issue DNS |
+
+**Naming conventions:**
+
+| Namespace | Purpose | Lifecycle |
+|-----------|---------|-----------|
+| `ai-agents` | Permanent agents for Chat Portal | Always exists |
+| `fc-{issue-id}` | Ephemeral workflow agents | Created/deleted per issue |
+| `farmercode` | API, Operator, infrastructure | Always exists |
+
+**Service discovery within workflow:**
+- Agents in `fc-issue-auth-123` call each other via simple names: `http://baron:8002`
+- No cross-namespace calls needed — each workflow has its own agent copies
+
+### 4.2 Custom Resource Definition (CRD)
 
 ```yaml
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
-  name: featureworkflows.farmercode.io
+  name: issueworkflows.farmercode.io
 spec:
   group: farmercode.io
   versions:
@@ -605,62 +1095,121 @@ spec:
                     type: object
   scope: Namespaced
   names:
-    plural: featureworkflows
-    singular: featureworkflow
-    kind: FeatureWorkflow
+    plural: issueworkflows
+    singular: issueworkflow
+    kind: IssueWorkflow
     shortNames:
       - fw
 ```
 
-### 4.2 Example FeatureWorkflow
+### 4.3 Example IssueWorkflow
 
 ```yaml
 apiVersion: farmercode.io/v1
-kind: FeatureWorkflow
+kind: IssueWorkflow
 metadata:
-  name: feature-auth-123
-  namespace: farmercode
+  name: issue-auth-123
+  namespace: farmercode            # CRD lives in infrastructure namespace
+  labels:
+    issue-type: feature
 spec:
   repo: farmer1st/my-app
-  branch: feature/auth-123
+  branch: issue/auth-123
   issueNumber: 42
   workflow: sdlc-standard
   agents:
+    # Workflow agents
     - name: baron
       version: "2.0.0"
-    - name: duc
-      version: "1.5.0"
     - name: marie
       version: "1.2.0"
     - name: dede
       version: "3.0.0"
-    - name: reviewer
+    - name: dali
+      version: "1.0.0"
+    - name: gus
+      version: "2.1.0"
+    - name: victor
+      version: "1.0.0"
+    - name: general
+      version: "1.0.0"
+    - name: socrate
+      version: "1.0.0"
+    # Consultants (can be invoked via A2A)
+    - name: veuve
+      version: "1.0.0"
+    - name: duc
+      version: "1.5.0"
+    # Human bridges
+    - name: human-product
+      version: "1.0.0"
+    - name: human-tech
       version: "1.0.0"
 status:
-  phase: planning
-  worktreePath: /volumes/worktrees/feature-auth-123
-  pods:
-    - name: orchestrator-auth-123
+  phase: implement
+  workflowNamespace: fc-issue-auth-123   # Ephemeral namespace for this workflow
+  worktreePath: /volumes/worktrees/issue-auth-123
+  pods:                                   # Simple names within workflow namespace
+    - name: orchestrator
       status: Running
-    - name: baron-auth-123
+    - name: baron
       status: Running
-    - name: duc-auth-123
+    - name: marie
+      status: Running
+    - name: dede
+      status: Running
+    - name: dali
+      status: Running
+    - name: gus
+      status: Running
+    - name: victor
+      status: Running
+    - name: general
+      status: Running
+    - name: socrate
+      status: Running
+    - name: veuve
+      status: Running
+    - name: duc
+      status: Running
+    - name: human-product
+      status: Running
+    - name: human-tech
       status: Running
 ```
 
-### 4.3 Kubernetes Operator (kopf)
+### 4.4 Kubernetes Operator (kopf)
 
 ```python
 import kopf
 import kubernetes
 from kubernetes import client
 
-@kopf.on.create('farmercode.io', 'v1', 'featureworkflows')
-async def on_feature_created(spec, name, namespace, logger, **kwargs):
-    """Handle new feature workflow creation."""
-    logger.info(f"Creating feature workflow: {name}")
+WORKFLOW_NS_PREFIX = "fc-"  # fc-issue-auth-123
 
-    # 1. Create worktree on shared volume
+@kopf.on.create('farmercode.io', 'v1', 'issueworkflows')
+async def on_issue_created(spec, name, namespace, logger, **kwargs):
+    """Handle new issue workflow creation."""
+    logger.info(f"Creating issue workflow: {name}")
+
+    v1 = client.CoreV1Api()
+    workflow_ns = f"{WORKFLOW_NS_PREFIX}{name}"
+
+    # 1. Create ephemeral namespace for this workflow
+    ns = client.V1Namespace(
+        metadata=client.V1ObjectMeta(
+            name=workflow_ns,
+            labels={
+                "app": "farmercode",
+                "issue": name,
+                "managed-by": "farmercode-operator",
+            }
+        )
+    )
+    v1.create_namespace(body=ns)
+    logger.info(f"Created namespace: {workflow_ns}")
+
+    # 2. Create worktree on shared volume
     worktree_path = f"/volumes/worktrees/{name}"
     await create_worktree(
         repo=spec['repo'],
@@ -668,59 +1217,70 @@ async def on_feature_created(spec, name, namespace, logger, **kwargs):
         path=worktree_path
     )
 
-    # 2. Spawn orchestrator pod
+    # 3. Spawn orchestrator pod (simple name within workflow namespace)
     orchestrator_pod = create_orchestrator_pod(
-        name=f"orchestrator-{name}",
-        feature_id=name,
+        name="orchestrator",  # Simple name
+        issue_id=name,
         worktree_path=worktree_path,
         agents=spec['agents'],
         workflow=spec['workflow']
     )
+    v1.create_namespaced_pod(namespace=workflow_ns, body=orchestrator_pod)
 
-    v1 = client.CoreV1Api()
-    v1.create_namespaced_pod(namespace=namespace, body=orchestrator_pod)
-
-    # 3. Spawn agent pods
+    # 4. Spawn agent pods (simple names within workflow namespace)
     for agent in spec['agents']:
         agent_pod = create_agent_pod(
-            name=f"{agent['name']}-{name}",
+            name=agent['name'],  # Simple name: "baron", "marie", etc.
             agent_name=agent['name'],
             agent_version=agent['version'],
-            worktree_path=worktree_path
+            worktree_path=worktree_path,
+            issue_id=name,
         )
-        v1.create_namespaced_pod(namespace=namespace, body=agent_pod)
+        v1.create_namespaced_pod(namespace=workflow_ns, body=agent_pod)
 
-    return {'worktreePath': worktree_path}
+    return {'workflowNamespace': workflow_ns, 'worktreePath': worktree_path}
 
 
-@kopf.on.delete('farmercode.io', 'v1', 'featureworkflows')
-async def on_feature_deleted(spec, name, namespace, logger, **kwargs):
-    """Cleanup feature workflow resources."""
-    logger.info(f"Deleting feature workflow: {name}")
+@kopf.on.delete('farmercode.io', 'v1', 'issueworkflows')
+async def on_issue_deleted(spec, name, namespace, logger, **kwargs):
+    """Cleanup issue workflow resources."""
+    logger.info(f"Deleting issue workflow: {name}")
 
     v1 = client.CoreV1Api()
+    workflow_ns = f"{WORKFLOW_NS_PREFIX}{name}"
 
-    # Delete all pods for this feature
-    pods = v1.list_namespaced_pod(
-        namespace=namespace,
-        label_selector=f"feature={name}"
-    )
-    for pod in pods.items:
-        v1.delete_namespaced_pod(name=pod.metadata.name, namespace=namespace)
+    # Delete namespace — cascades deletion of all pods, services, etc.
+    try:
+        v1.delete_namespace(name=workflow_ns)
+        logger.info(f"Deleted namespace: {workflow_ns}")
+    except kubernetes.client.exceptions.ApiException as e:
+        if e.status != 404:
+            raise
 
     # Archive/delete worktree
     await cleanup_worktree(f"/volumes/worktrees/{name}")
 
 
-def create_agent_pod(name: str, agent_name: str, agent_version: str, worktree_path: str):
-    """Create a pod spec for an agent."""
+def create_agent_pod(
+    name: str,
+    agent_name: str,
+    agent_version: str,
+    worktree_path: str,
+    issue_id: str,
+):
+    """
+    Create a pod spec for an agent.
+
+    NOTE: Claude Agent SDK uses OAuth from Claude Code — no API key secret needed.
+    Authentication is handled via the base image which has Claude Code pre-configured.
+    """
     return client.V1Pod(
         metadata=client.V1ObjectMeta(
             name=name,
             labels={
                 "app": "farmercode-agent",
                 "agent": agent_name,
-                "feature": name.split('-', 1)[1] if '-' in name else name
+                "issue": issue_id,
             }
         ),
         spec=client.V1PodSpec(
@@ -732,15 +1292,17 @@ def create_agent_pod(name: str, agent_name: str, agent_version: str, worktree_pa
                         client.V1EnvVar(name="AGENT_NAME", value=agent_name),
                         client.V1EnvVar(name="AGENT_VERSION", value=agent_version),
                         client.V1EnvVar(name="WORKTREE_PATH", value=worktree_path),
+                        client.V1EnvVar(name="ISSUE_ID", value=issue_id),
                     ],
                     volume_mounts=[
                         client.V1VolumeMount(
                             name="worktrees",
                             mount_path="/volumes/worktrees"
                         ),
+                        # Claude Code config for OAuth authentication
                         client.V1VolumeMount(
-                            name="credentials",
-                            mount_path="/secrets",
+                            name="claude-config",
+                            mount_path="/home/agent/.claude",
                             read_only=True
                         )
                     ]
@@ -753,10 +1315,11 @@ def create_agent_pod(name: str, agent_name: str, agent_version: str, worktree_pa
                         claim_name="worktrees-pvc"
                     )
                 ),
+                # Claude Code OAuth config (not API keys)
                 client.V1Volume(
-                    name="credentials",
+                    name="claude-config",
                     secret=client.V1SecretVolumeSource(
-                        secret_name="claude-credentials"
+                        secret_name="claude-oauth-config"
                     )
                 )
             ]
@@ -764,7 +1327,7 @@ def create_agent_pod(name: str, agent_name: str, agent_version: str, worktree_pa
     )
 ```
 
-### 4.4 Local Development (k3d)
+### 4.5 Local Development (k3d)
 
 ```bash
 # Create cluster with shared volume
@@ -772,21 +1335,22 @@ k3d cluster create farmercode \
   --volume /tmp/farmercode/worktrees:/volumes/worktrees \
   --port 8080:80@loadbalancer
 
-# Deploy DynamoDB Local
+# Deploy infrastructure namespace and components
+kubectl create namespace farmercode
 kubectl apply -f infrastructure/dynamodb-local.yaml
-
-# Deploy operator
 kubectl apply -f infrastructure/operator.yaml
-
-# Deploy API
 kubectl apply -f apps/farmercode-api.yaml
 
-# Create a test feature
+# Create ai-agents namespace for Chat Portal (permanent agents)
+kubectl create namespace ai-agents
+kubectl apply -f apps/chat-portal-agents.yaml
+
+# Create a test issue workflow (operator will create fc-issue-test-001 namespace)
 kubectl apply -f - <<EOF
 apiVersion: farmercode.io/v1
-kind: FeatureWorkflow
+kind: IssueWorkflow
 metadata:
-  name: feature-test-001
+  name: issue-test-001
 spec:
   repo: farmer1st/test-app
   branch: feature/test-001
@@ -801,21 +1365,40 @@ EOF
 
 ## 5. Agent Communication (A2A)
 
+We implement the [Google A2A Protocol](https://github.com/google/A2A) for agent-to-agent
+communication. A2A is an open protocol that defines JSON-RPC 2.0 endpoints for agent discovery and task execution.
+
 ### 5.1 Protocol Overview
 
-Agents communicate using the A2A (Agent-to-Agent) protocol:
+Agents communicate using JSON-RPC 2.0 over HTTP:
 
 ```
-┌──────────────┐         A2A Request          ┌──────────────┐
-│              │ ─────────────────────────────▶│              │
-│    Baron     │  POST /invoke/duc/1.5.0      │     Duc      │
-│              │  {task_id, prompt, context}  │              │
-│              │                              │              │
-│              │         A2A Response         │              │
-│              │ ◀─────────────────────────────│              │
-│              │  {status, content, confidence}│              │
-└──────────────┘                              └──────────────┘
+┌──────────────┐         A2A Request (JSON-RPC 2.0)         ┌──────────────┐
+│              │ ──────────────────────────────────────────▶│              │
+│    Baron     │  POST http://duc:8002/a2a                   │     Duc      │
+│              │  {"jsonrpc":"2.0","method":"tasks/send",...}│              │
+│              │                                             │              │
+│              │         A2A Response                        │              │
+│              │ ◀──────────────────────────────────────────│              │
+│              │  {"jsonrpc":"2.0","result":{"id":"..."},...}│              │
+└──────────────┘                                             └──────────────┘
 ```
+
+**A2A Endpoints:**
+
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/.well-known/agent.json` | GET | Agent discovery (capabilities) |
+| `/a2a` | POST | JSON-RPC 2.0 endpoint for all operations |
+
+**JSON-RPC Methods:**
+
+| Method | Purpose |
+|--------|---------|
+| `tasks/send` | Send a task to an agent |
+| `tasks/sendSubscribe` | Send task with SSE streaming |
+| `tasks/get` | Get task status/result |
+| `tasks/cancel` | Cancel a running task |
 
 ### 5.2 Task Lifecycle States
 
@@ -823,47 +1406,95 @@ Agents communicate using the A2A (Agent-to-Agent) protocol:
 |-------|-------------|
 | `submitted` | Task received, queued for processing |
 | `working` | Agent actively processing |
-| `input-required` | Blocked on human input |
+| `input-required` | Blocked on human input (triggers escalation) |
 | `completed` | Successfully finished |
 | `failed` | Error occurred |
+| `canceled` | Task was canceled |
 
 ### 5.3 Streaming Responses
 
-For long-running tasks, agents use Server-Sent Events (SSE):
+For long-running tasks, agents use SSE via `tasks/sendSubscribe`:
 
 ```python
-@app.post("/invoke/{agent}/{version}")
-async def invoke_agent(agent: str, version: str, request: InvokeRequest):
+@app.post("/a2a")
+async def a2a_endpoint(request: JSONRPCRequest):
+    if request.method == "tasks/sendSubscribe":
+        return StreamingResponse(
+            stream_task(request.params),
+            media_type="text/event-stream"
+        )
+    # ... handle other methods
+
+async def stream_task(params: dict):
     task_id = generate_task_id()
 
-    async def event_stream():
-        yield f"event: task-created\ndata: {json.dumps({'task_id': task_id})}\n\n"
+    # Task submitted
+    yield f"data: {json.dumps({'jsonrpc': '2.0', 'result': {'id': task_id, 'status': {'state': 'submitted'}}})}\n\n"
 
-        async for chunk in runtime.invoke_stream(request.prompt):
-            yield f"event: progress\ndata: {json.dumps({'content': chunk})}\n\n"
+    # Task working
+    yield f"data: {json.dumps({'jsonrpc': '2.0', 'result': {'id': task_id, 'status': {'state': 'working'}}})}\n\n"
 
-        final = await runtime.get_result(task_id)
-        yield f"event: completed\ndata: {json.dumps(final)}\n\n"
+    async for chunk in runtime.invoke_stream(params["message"]):
+        yield f"data: {json.dumps({'jsonrpc': '2.0', 'result': {'id': task_id, 'artifact': {'parts': [{'type': 'text', 'text': chunk}]}}})}\n\n"
 
-    return StreamingResponse(event_stream(), media_type="text/event-stream")
+    # Task completed
+    final = await runtime.get_result(task_id)
+    yield f"data: {json.dumps({'jsonrpc': '2.0', 'result': {'id': task_id, 'status': {'state': 'completed'}, 'artifacts': final.artifacts}})}\n\n"
 ```
 
 ### 5.4 Session Isolation
 
-Each feature gets isolated conversation contexts:
+Each feature gets isolated conversation contexts stored in **DynamoDB** (not files):
 
 ```
-/conversations/
-├── feature-auth-123/
-│   ├── baron.json      # Baron's conversation history
-│   ├── duc.json        # Duc's conversation history
-│   └── marie.json      # Marie's conversation history
-├── feature-payment-456/
-│   ├── baron.json
-│   └── ...
+DynamoDB Table: farmercode
+───────────────────────────────────────────────────────────
+PK                    SK                        Data
+───────────────────────────────────────────────────────────
+issue#auth-123      conversation#baron#001    {messages: [...]}
+issue#auth-123      conversation#duc#002      {messages: [...]}
+issue#auth-123      conversation#marie#003    {messages: [...]}
+issue#payment-456   conversation#baron#001    {messages: [...]}
 ```
 
-Claude Code CLI uses the worktree path for session isolation automatically.
+The Claude SDK adapter reads/writes conversation history to DynamoDB, keyed by issue ID
+and agent. This ensures:
+- Persistence across pod restarts
+- Queryable conversation history for training
+- No file system state to manage
+
+### 5.5 Service Discovery
+
+A2A URLs vary based on namespace context (see Section 4.1 for namespace strategy):
+
+| Context | URL Pattern | Example |
+|---------|-------------|---------|
+| **Within workflow namespace** | `http://{agent}:{port}` | `http://duc:8002/a2a` |
+| **Chat Portal → workflow** | Not applicable | Workflows isolated |
+| **Chat Portal internal** | `http://{agent}:{port}` | `http://baron:8002/a2a` |
+| **Cross-namespace (rare)** | `http://{agent}.{namespace}.svc:{port}` | `http://baron.ai-agents.svc:8002/a2a` |
+
+**Why simple names work:**
+
+Within a Kubernetes namespace, services are discoverable by their short name. Since each
+workflow runs in its own namespace (`fc-{issue-id}`), agents call each other using simple
+names like `http://duc:8002`. This provides:
+
+1. **Automatic isolation** — calls stay within the workflow namespace
+2. **Simple configuration** — no namespace prefixes needed
+3. **Consistent addressing** — same code works in any workflow namespace
+
+**Agent Card URL:**
+
+The `url` field in agent cards uses simple names. The actual URL resolution happens at
+the Kubernetes DNS level based on which namespace the caller is in.
+
+```json
+{
+  "name": "baron",
+  "url": "http://baron:8002"
+}
+```
 
 ---
 
@@ -871,7 +1502,17 @@ Claude Code CLI uses the worktree path for session isolation automatically.
 
 ### 6.1 Confidence-Based Escalation
 
-When an agent has low confidence (<80%), it escalates to a human:
+When an agent has low confidence (<80%), it escalates to a human.
+
+**v1 Approach: Polling**
+
+The orchestrator polls GitHub for human responses. This keeps the implementation simple
+and avoids webhook infrastructure complexity. Pods stay alive during the wait.
+
+**Future: Webhook-Triggered Resumption**
+
+Replace polling with GitHub webhooks + stop-and-go pattern (Section 11.2) for better
+resource efficiency.
 
 ```python
 class AgentRuntime:
@@ -905,7 +1546,8 @@ class AgentRuntime:
             message=f"Human input needed on issue #{github_issue}"
         )
 
-        # Poll for response
+        # v1: Poll for response (pod stays alive)
+        # Future: Checkpoint and exit, webhook triggers resume
         response = await self.poll_for_response(
             issue=github_issue,
             comment_id=comment_id,
@@ -917,6 +1559,13 @@ class AgentRuntime:
             human_response=response
         )
 ```
+
+| Approach | v1 (Polling) | Future (Webhooks) |
+|----------|--------------|-------------------|
+| Implementation | Simple | Requires webhook infrastructure |
+| Resource usage | Pod idles during wait | Pod terminates, zero resource usage |
+| Latency | Poll interval (30s default) | Near-instant on webhook |
+| Debugging | Easy (pod stays alive) | Requires event replay |
 
 ### 6.2 Escalation Flow
 
@@ -980,7 +1629,7 @@ All confidence scores are persisted for training:
 @dataclass
 class ConfidenceRecord:
     timestamp: datetime
-    feature_id: str
+    issue_id: str
     source_agent: str      # Who asked
     target_agent: str      # Who answered
     question: str
@@ -990,6 +1639,174 @@ class ConfidenceRecord:
     human_response: str | None
     final_outcome: str     # "accepted", "rejected", "modified"
 ```
+
+### 6.5 Human Bridge Implementation
+
+Human Bridge agents (`human-product`, `human-tech`) are **not AI agents** — they're a
+GitHub + Slack integration that routes escalations to humans and returns responses.
+
+**Flow:**
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                        Human Bridge Flow                                         │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                  │
+│  1. Agent (e.g., Duc) needs human input                                          │
+│       │                                                                          │
+│       ▼                                                                          │
+│  2. Agent posts comment to GitHub Issue:                                         │
+│     ┌─────────────────────────────────────────────────────────────────────────┐ │
+│     │ /human: Should this service use JWT or sessions?                        │ │
+│     │ Confidence: 65%                                                         │ │
+│     │ Context: Auth service for multi-tenant SaaS                             │ │
+│     └─────────────────────────────────────────────────────────────────────────┘ │
+│       │                                                                          │
+│       ▼                                                                          │
+│  3. GitHub Action detects `/human:` prefix → sends to Slack                      │
+│     ┌─────────────────────────────────────────────────────────────────────────┐ │
+│     │ #farmercode-escalations                                                 │ │
+│     │ 🤖 Duc needs input on issue #42                                         │ │
+│     │ Q: Should this service use JWT or sessions?                             │ │
+│     │ Reply with: /duc <your answer>                                          │ │
+│     └─────────────────────────────────────────────────────────────────────────┘ │
+│       │                                                                          │
+│       ▼                                                                          │
+│  4. Human replies in Slack: "/duc Use JWT for stateless auth"                    │
+│       │                                                                          │
+│       ▼                                                                          │
+│  5. Slack bot posts human's reply as GitHub comment:                             │
+│     ┌─────────────────────────────────────────────────────────────────────────┐ │
+│     │ /duc Use JWT for stateless auth. Implement token refresh.               │ │
+│     │ — @john.smith via Slack                                                 │ │
+│     └─────────────────────────────────────────────────────────────────────────┘ │
+│       │                                                                          │
+│       ▼                                                                          │
+│  6. Duc (polling) sees comment starting with `/duc` → processes response         │
+│                                                                                  │
+└─────────────────────────────────────────────────────────────────────────────────┘
+```
+
+**Agent Polling Logic:**
+
+Each agent polls GitHub for comments prefixed with their name:
+
+```python
+class AgentRuntime:
+    async def poll_for_human_response(
+        self,
+        issue_number: int,
+        timeout: timedelta,
+    ) -> HumanResponse | None:
+        """Poll for human response addressed to this agent."""
+        prefix = f"/{self.agent_name}"  # e.g., "/duc", "/veuve", "/baron"
+        deadline = datetime.now() + timeout
+
+        while datetime.now() < deadline:
+            comments = await self.github.get_issue_comments(
+                issue=issue_number,
+                since=self.escalation_timestamp,
+            )
+
+            for comment in comments:
+                if comment.body.startswith(prefix):
+                    # Extract response (strip prefix and author line)
+                    response_text = comment.body[len(prefix):].strip()
+                    return HumanResponse(
+                        text=response_text,
+                        user=comment.user.login,
+                        timestamp=comment.created_at,
+                    )
+
+            await asyncio.sleep(self.config.poll_interval.total_seconds())
+
+        return None  # Timeout
+```
+
+**GitHub Action (escalation-to-slack.yml):**
+
+```yaml
+name: Escalation to Slack
+on:
+  issue_comment:
+    types: [created]
+
+jobs:
+  notify:
+    if: startsWith(github.event.comment.body, '/human:')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Parse escalation
+        id: parse
+        run: |
+          BODY="${{ github.event.comment.body }}"
+          QUESTION=$(echo "$BODY" | sed 's|^/human:||')
+          AGENT=$(echo "${{ github.event.comment.user.login }}" | sed 's|farmer1st-||')
+          echo "question=$QUESTION" >> $GITHUB_OUTPUT
+          echo "agent=$AGENT" >> $GITHUB_OUTPUT
+
+      - name: Send to Slack
+        uses: slackapi/slack-github-action@v1
+        with:
+          channel-id: ${{ secrets.SLACK_ESCALATION_CHANNEL }}
+          payload: |
+            {
+              "text": "🤖 ${{ steps.parse.outputs.agent }} needs input on issue #${{ github.event.issue.number }}",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Question:* ${{ steps.parse.outputs.question }}\n\nReply with: `/${{ steps.parse.outputs.agent }} <your answer>`"
+                  }
+                }
+              ]
+            }
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+```
+
+**Slack Bot (posts responses to GitHub):**
+
+```python
+@slack_app.event("message")
+async def handle_slack_response(event: dict, say):
+    """Handle Slack messages that are agent responses."""
+    text = event.get("text", "")
+
+    # Check if message is addressed to an agent (e.g., "/duc ...")
+    agent_prefixes = ["/duc", "/veuve", "/baron", "/marie", "/dede", "/gus"]
+    matching_prefix = next((p for p in agent_prefixes if text.startswith(p)), None)
+
+    if not matching_prefix:
+        return  # Not an agent response
+
+    # Find the active escalation for this agent
+    escalation = await db.get_active_escalation(agent=matching_prefix[1:])
+    if not escalation:
+        await say(f"No active escalation for {matching_prefix}")
+        return
+
+    # Post response to GitHub
+    user_info = await slack_app.client.users_info(user=event["user"])
+    username = user_info["user"]["real_name"]
+
+    await github.post_comment(
+        issue=escalation.issue_number,
+        body=f"{text}\n— @{username} via Slack"
+    )
+
+    await say(f"✅ Response posted to GitHub issue #{escalation.issue_number}")
+```
+
+**Why This Design?**
+
+| Aspect | Benefit |
+|--------|---------|
+| GitHub as source of truth | All escalations and responses are in issue history |
+| Agent-prefixed responses | Multiple agents can have concurrent escalations on same issue |
+| Slack for notifications | Humans get real-time alerts, can respond from mobile |
+| Polling (v1) | Simple, no webhook infrastructure needed |
 
 ---
 
@@ -1066,22 +1883,23 @@ async def cleanup_worktree(path: str):
 │  ───────────────────────────────────────────────────────────────────────────    │
 │                                                                                  │
 │  # Events (append-only, immutable) - PRIMARY DATA                                │
-│  feature#auth-123        event#00001#2024-01-08T10:00:00  {type: WorkflowCreated}│
-│  feature#auth-123        event#00002#2024-01-08T10:00:01  {type: PhaseStarted}   │
-│  feature#auth-123        event#00003#2024-01-08T10:05:32  {type: AgentInvoked}   │
-│  feature#auth-123        event#00004#2024-01-08T10:05:45  {type: CommitCreated}  │
-│  feature#auth-123        event#00005#2024-01-08T10:05:46  {type: PhaseCompleted} │
-│  feature#auth-123        event#00006#2024-01-08T10:47:30  {type: FeedbackRequested}
+│  # SK format: event#{version} — version-only for uniqueness, timestamp as attr  │
+│  issue#auth-123        event#00000001  {type: WorkflowCreated, ts: 2024-01-08T10:00:00}
+│  issue#auth-123        event#00000002  {type: PhaseStarted, ts: 2024-01-08T10:00:01}
+│  issue#auth-123        event#00000003  {type: AgentInvoked, ts: 2024-01-08T10:05:32}
+│  issue#auth-123        event#00000004  {type: CommitCreated, ts: 2024-01-08T10:05:45}
+│  issue#auth-123        event#00000005  {type: PhaseCompleted, ts: 2024-01-08T10:05:46}
+│  issue#auth-123        event#00000006  {type: FeedbackRequested, ts: 2024-01-08T10:47:30}
 │  ...                                                                             │
 │                                                                                  │
 │  # Projections (computed views, can be rebuilt from events)                      │
-│  feature#auth-123        projection#current_state        {phase, status, last_sha}
-│  feature#auth-123        projection#timeline             {phases: [...]}        │
-│  feature#auth-123        projection#metrics              {tokens, duration, ...}│
+│  issue#auth-123        projection#current_state        {phase, status, last_sha}
+│  issue#auth-123        projection#timeline             {phases: [...]}        │
+│  issue#auth-123        projection#metrics              {tokens, duration, ...}│
 │                                                                                  │
 │  # Conversations                                                                 │
-│  feature#auth-123        conversation#baron#001          messages[]             │
-│  feature#auth-123        conversation#duc#002            messages[]             │
+│  issue#auth-123        conversation#baron#001          messages[]             │
+│  issue#auth-123        conversation#duc#002            messages[]             │
 │                                                                                  │
 │  # Templates                                                                     │
 │  template#sdlc-standard  metadata                        phases[], transitions[]│
@@ -1106,10 +1924,10 @@ async def cleanup_worktree(path: str):
 
 | Access Pattern | Key Condition |
 |----------------|---------------|
-| Get all events for feature | `PK = feature#X, SK begins_with event#` |
-| Get events from version N | `PK = feature#X, SK >= event#N` |
-| Get current state projection | `PK = feature#X, SK = projection#current_state` |
-| List all conversations for feature | `PK = feature#X, SK begins_with conversation#` |
+| Get all events for feature | `PK = issue#X, SK begins_with event#` |
+| Get events from version N | `PK = issue#X, SK >= event#N` |
+| Get current state projection | `PK = issue#X, SK = projection#current_state` |
+| List all conversations for feature | `PK = issue#X, SK begins_with conversation#` |
 | List features by status (kanban) | `GSI1PK = status, GSI1SK between dates` |
 | List all feedback events | `GSI2PK = FeedbackRequested, GSI2SK between dates` |
 | Get workflow template | `PK = template#X, SK = metadata` |
@@ -1142,6 +1960,65 @@ def get_dynamodb():
     else:
         return boto3.resource('dynamodb', region_name='us-east-1')
 ```
+
+### 8.4 Schema Evolution Strategy
+
+DynamoDB is schemaless, but our application layer has implicit schemas. Strategy for
+handling evolution:
+
+**1. Event Schema Versioning:**
+
+Events are immutable, so we version the schema within the event data:
+
+```python
+@dataclass
+class PhaseCompleted(WorkflowEvent):
+    schema_version: int = 2  # Increment when structure changes
+    phase: str
+    agent: str
+    confidence: int
+    # v2 additions:
+    tokens_used: int = 0      # New field with default
+    duration_ms: int = 0      # New field with default
+```
+
+**2. Projection Rebuilding:**
+
+Since projections are derived from events, schema changes only affect the projection
+code. Old events are transformed on read:
+
+```python
+def _apply_event(self, state: WorkflowState, event: WorkflowEvent) -> WorkflowState:
+    match event:
+        case PhaseCompleted():
+            # Handle both v1 and v2 events
+            tokens = getattr(event, 'tokens_used', 0)  # Default for v1 events
+            ...
+```
+
+**3. Migration Script Pattern:**
+
+For breaking changes, run a one-time migration that re-serializes events:
+
+```bash
+# migration_20260115_add_tokens.py
+# - Read all events
+# - Add missing fields with defaults
+# - Write back (same PK/SK, just updated data)
+```
+
+**4. GSI Changes:**
+
+Adding new GSIs is safe (background build). Removing GSIs requires application
+changes first (stop querying the index before deletion).
+
+| Change Type | Strategy |
+|-------------|----------|
+| Add optional field | Default in code, no migration needed |
+| Add required field | Migration script to backfill |
+| Add GSI | Create async, no downtime |
+| Rename field | Dual-read period, then migration |
+| Remove field | Stop reading first, then ignore |
 
 ---
 
@@ -1176,7 +2053,7 @@ from uuid import UUID
 @dataclass
 class WorkflowEvent:
     event_id: UUID
-    feature_id: str
+    issue_id: str
     timestamp: datetime
     version: int
 
@@ -1214,6 +2091,13 @@ class PhaseFailed(WorkflowEvent):
     retryable: bool
 
 @dataclass
+class PhaseInterrupted(WorkflowEvent):
+    """Logged when a phase is interrupted by pod termination (Section 11.7)."""
+    phase: str
+    agent: str
+    reason: str  # "pod_termination", "timeout", etc.
+
+@dataclass
 class EscalationRequested(WorkflowEvent):
     agent: str
     question: str
@@ -1227,6 +2111,19 @@ class EscalationResolved(WorkflowEvent):
     human_response: str
     responded_by: str
     response_time_ms: int
+
+@dataclass
+class AgentConsulted(WorkflowEvent):
+    """Logged when one agent consults another via A2A (Section 3.7)."""
+    from_agent: str          # Who asked
+    to_agent: str            # Who answered
+    skill: str               # A2A skill invoked (e.g., "clarify.architecture")
+    question: str            # The question asked
+    response: str            # The response received
+    confidence: int          # Consulted agent's confidence (0-100)
+    escalated_to_human: bool # Did the consulted agent escalate?
+    tokens_used: int
+    duration_ms: int
 
 @dataclass
 class FeedbackRequested(WorkflowEvent):
@@ -1260,39 +2157,102 @@ class WorkflowFailed(WorkflowEvent):
 ### 9.3 Event Store Implementation
 
 ```python
+from botocore.exceptions import ClientError
+
 class EventStore:
-    """Append-only event store backed by DynamoDB."""
+    """Append-only event store backed by DynamoDB with optimistic concurrency."""
+
+    MAX_APPEND_RETRIES = 5
 
     async def append(self, event: WorkflowEvent) -> int:
-        """Append event and return new version number."""
-        current_version = await self._get_current_version(event.feature_id)
-        new_version = current_version + 1
+        """
+        Append event with optimistic concurrency control.
 
-        await self.table.put_item(
-            Item={
-                'PK': f'feature#{event.feature_id}',
-                'SK': f'event#{str(new_version).zfill(8)}#{event.timestamp.isoformat()}',
-                'event_type': event.__class__.__name__,
-                'version': new_version,
-                'data': self._serialize_event(event),
-            },
-            ConditionExpression='attribute_not_exists(SK)'
+        Uses retry loop to handle race conditions where two processes attempt
+        to write the same version simultaneously. DynamoDB's conditional write
+        ensures exactly one succeeds; the other retries with an updated version.
+        """
+        for attempt in range(self.MAX_APPEND_RETRIES):
+            current_version = await self._get_current_version(event.issue_id)
+            new_version = current_version + 1
+
+            try:
+                await self.table.put_item(
+                    Item={
+                        'PK': f'issue#{event.issue_id}',
+                        'SK': f'event#{str(new_version).zfill(8)}',
+                        'event_type': event.__class__.__name__,
+                        'version': new_version,
+                        'timestamp': event.timestamp.isoformat(),
+                        'data': self._serialize_event(event),
+                    },
+                    ConditionExpression='attribute_not_exists(SK)'
+                )
+                return new_version
+            except ClientError as e:
+                if e.response['Error']['Code'] == 'ConditionalCheckFailedException':
+                    # Another process wrote first — retry with fresh version
+                    if attempt < self.MAX_APPEND_RETRIES - 1:
+                        continue
+                    raise EventStoreConflictError(
+                        f"Failed to append event after {self.MAX_APPEND_RETRIES} attempts"
+                    ) from e
+                raise
+
+        raise EventStoreConflictError("Unreachable: retry loop exhausted")
+
+    async def _get_current_version(self, issue_id: str) -> int:
+        """Get the latest event version for an issue."""
+        response = await self.table.query(
+            KeyConditionExpression=Key('PK').eq(f'issue#{issue_id}') &
+                                  Key('SK').begins_with('event#'),
+            ScanIndexForward=False,  # Descending order
+            Limit=1
         )
-        return new_version
+        if response['Items']:
+            return response['Items'][0]['version']
+        return 0
 
     async def get_events(
         self,
-        feature_id: str,
+        issue_id: str,
         from_version: int = 0,
         event_types: list[str] | None = None
     ) -> list[WorkflowEvent]:
-        """Retrieve events for replay or projection."""
-        response = await self.table.query(
-            KeyConditionExpression=Key('PK').eq(f'feature#{feature_id}') &
-                                  Key('SK').begins_with('event#')
-        )
-        return [self._deserialize_event(item) for item in response['Items']]
+        """Retrieve events for replay or projection.
+
+        Args:
+            issue_id: The issue to get events for
+            from_version: Only return events with version > from_version
+            event_types: Optional list of event type names to filter by
+        """
+        # Build key condition - use version range if from_version specified
+        if from_version > 0:
+            key_condition = (
+                Key('PK').eq(f'issue#{issue_id}') &
+                Key('SK').gt(f'event#{str(from_version).zfill(8)}')
+            )
+        else:
+            key_condition = (
+                Key('PK').eq(f'issue#{issue_id}') &
+                Key('SK').begins_with('event#')
+            )
+
+        response = await self.table.query(KeyConditionExpression=key_condition)
+        events = [self._deserialize_event(item) for item in response['Items']]
+
+        # Filter by event types if specified
+        if event_types:
+            events = [e for e in events if e.__class__.__name__ in event_types]
+
+        return events
 ```
+
+> **Optimistic Concurrency:** The append operation uses a retry loop to handle race
+> conditions. If two processes try to write the same version, DynamoDB's conditional
+> write ensures exactly one succeeds. The losing process catches `ConditionalCheckFailedException`,
+> re-reads the current version, and retries. After 5 failed attempts, it raises an error
+> for investigation (indicates severe contention or a bug).
 
 ### 9.4 State Projection
 
@@ -1300,7 +2260,7 @@ class EventStore:
 @dataclass
 class WorkflowState:
     """Current state computed from events."""
-    feature_id: str
+    issue_id: str
     status: Literal["pending", "running", "paused", "completed", "failed"]
     current_phase: str | None
     phases_completed: list[str]
@@ -1308,13 +2268,17 @@ class WorkflowState:
     pending_escalation: dict | None
     pending_feedback: dict | None
     total_tokens: int
+    # Error fields (populated from WorkflowFailed event)
+    error: str | None = None
+    error_code: str | None = None
+    failed_phase: str | None = None
 
 class WorkflowProjection:
     """Projects events into current state."""
 
-    async def get_state(self, feature_id: str) -> WorkflowState:
-        events = await self.event_store.get_events(feature_id)
-        state = WorkflowState.initial(feature_id)
+    async def get_state(self, issue_id: str) -> WorkflowState:
+        events = await self.event_store.get_events(issue_id)
+        state = WorkflowState.initial(issue_id)
         for event in events:
             state = self._apply_event(state, event)
         return state
@@ -1331,28 +2295,59 @@ class WorkflowProjection:
                 return replace(state, status="paused", pending_escalation={...})
             case FeedbackRequested():
                 return replace(state, pending_feedback={...})
+            case WorkflowFailed():
+                return replace(state,
+                    status="failed",
+                    error=event.reason,
+                    error_code=getattr(event, 'error_code', None),
+                    failed_phase=event.failed_phase,
+                )
+            case WorkflowCompleted():
+                return replace(state, status="completed")
             # ... other event handlers
 ```
 
 ### 9.5 Crash Recovery
 
 ```python
-class FeatureOrchestrator:
+class IssueOrchestrator:
     async def run(self):
         """Run workflow with automatic recovery."""
-        state = await self.projection.get_state(self.feature_id)
+        state = await self.projection.get_state(self.issue_id)
 
         if state.status == "completed":
             return
 
         if state.pending_escalation:
             await self._wait_for_escalation(state.pending_escalation)
-            state = await self.projection.get_state(self.feature_id)
+            state = await self.projection.get_state(self.issue_id)
 
         phases_to_run = [p for p in self.phases if p not in state.phases_completed]
         for phase in phases_to_run:
             await self._run_phase(phase)
 ```
+
+### 9.6 State Model Clarification
+
+There are three distinct "states" in the system:
+
+| State Type | Location | Purpose | Replay? |
+|------------|----------|---------|---------|
+| **Workflow position** | DynamoDB events + projection | "Where are we in the pipeline?" | Yes (for audit) |
+| **Work product** | Git worktree | "What did agents produce?" | No (AI non-deterministic) |
+| **Conversation history** | DynamoDB conversations | "What was discussed?" | No (context only) |
+
+**Key insight:** Event replay reconstructs **workflow position** (which phases completed,
+what confidence scores were), not the actual **artifacts** (code, specs). The artifacts
+live in Git, and replaying events wouldn't reproduce them anyway because AI outputs are
+non-deterministic.
+
+**Projection vs Replay:**
+- **Normal operations:** Read `projection#current_state` directly (fast)
+- **Audit/debugging:** Replay events to see full history (slow but complete)
+
+The projection is updated after each event, so there's no need to replay events for
+normal workflow operations.
 
 ---
 
@@ -1407,7 +2402,11 @@ class Phase(str, Enum):
     TEST_DESIGN = "test_design"
     IMPLEMENT = "implement"
     VERIFY = "verify"
+    DOCS_QA = "docs_qa"
     REVIEW = "review"
+    RELEASE_STAGING = "release_staging"
+    RELEASE_PROD = "release_prod"
+    RETRO = "retro"
     DONE = "done"
 
 @dataclass
@@ -1420,17 +2419,26 @@ class Transition:
 
 SDLC_WORKFLOW = WorkflowDefinition(
     transitions=[
-        # Happy path
+        # Happy path (matches Section 3.5 diagram)
         Transition(Phase.SPECIFY, Phase.PLAN, "success"),
         Transition(Phase.PLAN, Phase.TASKS, "success"),
-        Transition(Phase.VERIFY, Phase.REVIEW, "success"),
-        Transition(Phase.REVIEW, Phase.DONE, "success"),
+        Transition(Phase.TASKS, Phase.TEST_DESIGN, "success"),
+        Transition(Phase.TEST_DESIGN, Phase.IMPLEMENT, "success"),
+        Transition(Phase.IMPLEMENT, Phase.VERIFY, "success"),
+        Transition(Phase.VERIFY, Phase.DOCS_QA, "success"),
+        Transition(Phase.DOCS_QA, Phase.REVIEW, "success"),
+        Transition(Phase.REVIEW, Phase.RELEASE_STAGING, "success"),
+        Transition(Phase.RELEASE_STAGING, Phase.RELEASE_PROD, "success"),
+        Transition(Phase.RELEASE_PROD, Phase.RETRO, "success"),
+        Transition(Phase.RETRO, Phase.DONE, "success"),
 
-        # Feedback loops
+        # Feedback loops (from Section 3.5)
         Transition(Phase.REVIEW, Phase.IMPLEMENT, "feedback:minor_changes", priority=10),
         Transition(Phase.REVIEW, Phase.PLAN, "feedback:architectural_rework", priority=10),
         Transition(Phase.VERIFY, Phase.IMPLEMENT, "feedback:test_failure", priority=10),
+        Transition(Phase.DOCS_QA, Phase.IMPLEMENT, "feedback:docs_inconsistent", priority=10),
         Transition(Phase.IMPLEMENT, Phase.SPECIFY, "feedback:spec_ambiguity", priority=10),
+        Transition(Phase.IMPLEMENT, Phase.PLAN, "feedback:plan_infeasible", priority=10),
     ],
     max_feedback_loops=5,
 )
@@ -1438,21 +2446,49 @@ SDLC_WORKFLOW = WorkflowDefinition(
 
 ### 10.4 Infinite Loop Protection
 
+Loop counts are derived from the event store (FeedbackRequested events), not stored
+in memory. This ensures counts survive pod restarts and are always accurate.
+
 ```python
 class FeedbackLoopProtection:
-    def __init__(self, max_total_loops: int = 5, max_same_transition: int = 2):
+    def __init__(
+        self,
+        event_store: EventStore,
+        issue_id: str,
+        max_total_loops: int = 5,
+        max_same_transition: int = 2,
+    ):
+        self.event_store = event_store
+        self.issue_id = issue_id
         self.max_total_loops = max_total_loops
         self.max_same_transition = max_same_transition
-        self.transition_counts: dict[str, int] = {}
 
-    def check_transition(self, from_phase: str, to_phase: str, reason: str) -> bool:
+    async def check_transition(self, from_phase: str, to_phase: str, reason: str) -> bool:
+        """Check if transition is allowed based on event history."""
+        # Count from events — survives pod restarts
+        feedback_events = await self.event_store.get_events(
+            self.issue_id,
+            event_types=["FeedbackRequested"]
+        )
+
+        total_loops = len(feedback_events)
+        if total_loops >= self.max_total_loops:
+            return False
+
         transition_key = f"{from_phase}->{to_phase}:{reason}"
-        if self.total_loops >= self.max_total_loops:
+        same_transition_count = sum(
+            1 for e in feedback_events
+            if f"{e.from_phase}->{e.to_phase}:{e.reason}" == transition_key
+        )
+        if same_transition_count >= self.max_same_transition:
             return False
-        if self.transition_counts.get(transition_key, 0) >= self.max_same_transition:
-            return False
+
         return True
 ```
+
+> **Why derive from events?** The orchestrator pod may restart during a long-running
+> workflow. By counting FeedbackRequested events from the event store, we ensure loop
+> protection is crash-consistent. The event store is the single source of truth.
 
 ### 10.5 GitHub Notifications
 
@@ -1480,7 +2516,7 @@ async def post_feedback_comment(issue_number: int, from_phase: str, to_phase: st
 
 **Problem:** Multiple agents on the same branch can have push conflicts.
 
-**Solution:** Push-rebase-retry loop with idempotency.
+**Solution:** Push-rebase-retry loop with idempotency and conflict escalation.
 
 ```python
 from tenacity import retry, stop_after_attempt, wait_exponential
@@ -1493,42 +2529,93 @@ class GitWorkspaceManager:
         except Exception as e:
             if "non-fast-forward" in str(e):
                 await run(f"git -C {workspace_path} fetch origin {branch}")
-                await run(f"git -C {workspace_path} rebase origin/{branch}")
+                try:
+                    await run(f"git -C {workspace_path} rebase origin/{branch}")
+                except Exception as rebase_error:
+                    if "CONFLICT" in str(rebase_error) or "could not apply" in str(rebase_error):
+                        # Abort rebase and escalate — agent cannot resolve merge conflicts
+                        await run(f"git -C {workspace_path} rebase --abort")
+                        raise GitMergeConflictError(
+                            f"Merge conflict on {branch}. Human intervention required.",
+                            conflicting_files=self._parse_conflict_files(str(rebase_error))
+                        )
+                    raise
                 raise GitPushConflictError("Rebased, retrying...")
             raise
         return (await run(f"git -C {workspace_path} rev-parse HEAD")).stdout.strip()
 ```
 
-### 11.2 Stop-and-Go Workflow (Sleeping Orchestrator)
+**Merge Conflict Escalation:**
 
-**Problem:** Jobs waiting for human input waste resources.
+When rebase fails due to actual merge conflicts (not just stale ref), the agent
+cannot automatically resolve conflicting changes. The workflow escalates to a human
+with the list of conflicting files. The human resolves conflicts manually, and the
+workflow resumes from the IMPLEMENT phase.
 
-**Solution:** Checkpoint state and exit. Resume with new Job when human responds.
+### 11.2 Stop-and-Go Workflow (Future Enhancement)
+
+> **Note:** This is a **future enhancement**. v1 uses the simpler polling approach
+> where pods stay alive during human wait times. See Section 3.4 and 6.1 for v1 behavior.
+
+**Problem:** Jobs waiting for human input waste resources (pods idle for hours/days).
+
+**Solution:** Checkpoint state and exit. Resume with new Job when human responds via webhook.
 
 ```
-Job 1: Phase 1 → Phase 2 → needs input → CHECKPOINT → EXIT
+Job 1: Phase 1 → Phase 2 → needs input → CHECKPOINT → EXIT (pod terminates)
                                 ↓
-                    (hours/days pass)
+                    (hours/days pass, zero resource usage)
                                 ↓
                     Human responds via GitHub
                                 ↓
-Job 2: Load state → Skip 1,2 → Resume Phase 3 → ... → Done
+                    GitHub webhook triggers API
+                                ↓
+                    API creates new Job
+                                ↓
+Job 2: Rehydrate state → Skip 1,2 → Resume Phase 3 → ... → Done
 ```
 
+**Prerequisites for Stop-and-Go:**
+- GitHub webhook handler in the API
+- Network connectivity for incoming webhooks (not available in all environments)
+- Robust event sourcing (already implemented in v1)
+
+**Implementation sketch (future):**
+
 ```python
-class FeatureOrchestrator:
+class IssueOrchestrator:
     async def run(self):
-        state = await self.projection.get_state(self.feature_id)
+        state = await self.projection.get_state(self.issue_id)
 
         for phase in phases_to_run:
             result = await self._execute_phase(phase)
 
             if result.status == "input_required":
-                await self._suspend_for_human_input(phase, result)
-                return  # Job exits, will be resumed later
+                # Future: Checkpoint and exit
+                await self._checkpoint_for_human_input(phase, result)
+                return OrchestratorResult(status="waiting_human")  # Job exits
 
             await self.event_store.append(PhaseCompleted(...))
+
+
+# Webhook handler (future)
+@app.post("/webhooks/github/issue-comment")
+async def on_issue_comment(payload: GitHubWebhookPayload):
+    if is_human_response(payload):
+        issue_id = extract_issue_id(payload)
+        # Spawn new orchestrator job to resume
+        await k8s.create_job(f"orchestrator-{issue_id}-resume")
 ```
+
+**v1 vs Future comparison:**
+
+| Aspect | v1 (Polling) | Future (Stop-and-Go) |
+|--------|--------------|----------------------|
+| Pod during wait | Stays alive, polls | Terminates |
+| Resource cost | ~$X/hour per waiting feature | $0 during wait |
+| Resume trigger | Poll detects response | Webhook creates Job |
+| Complexity | Simple | Requires webhook infra |
+| When to adopt | Now (v1) | When resource costs matter |
 
 ### 11.3 Idempotency Keys
 
@@ -1552,27 +2639,592 @@ from circuitbreaker import circuit
 class AgentClient:
     @circuit(failure_threshold=3, recovery_timeout=60)
     async def invoke(self, agent: str, skill: str, context: dict) -> AgentResponse:
-        response = await httpx.post(f"http://{agent}.agents.svc/a2a/invoke", ...)
+        # Within workflow namespace, use simple names (see Section 5.5)
+        response = await httpx.post(f"http://{agent}:8002/a2a", ...)
         return AgentResponse(**response.json())
 ```
 
-### 11.5 Watchdog for Missed Webhooks
+### 11.5 Watchdog for Stale Escalations
+
+A safety net for edge cases where escalations might be missed:
+
+**v1 (Polling):** Catches cases where:
+- Orchestrator pod crashed during polling
+- Polling loop had a transient failure
+- Human responded but orchestrator missed it
+
+**Future (Webhooks):** Catches cases where:
+- Webhook delivery failed
+- Webhook handler had an error
 
 ```python
 async def check_stale_escalations():
-    """Cron job to catch missed webhook responses."""
+    """Cron job to catch missed escalation responses."""
+    # Find escalations waiting longer than expected
+    threshold = datetime.now() - timedelta(hours=self.config.stale_threshold_hours)
     waiting = await dynamodb.query(status="waiting_human", updated_at__lt=threshold)
+
     for workflow in waiting:
         response = await github.check_for_response(workflow.comment_id)
         if response:
-            await resume_workflow(workflow.feature_id, response)
+            # v1: Wake up the orchestrator (it may have crashed)
+            # Future: Spawn new Job (stop-and-go pattern)
+            await resume_workflow(workflow.issue_id, response)
+```
+
+### 11.6 Rate Limiting
+
+**External API Protection:**
+
+| API | Rate Limit | Strategy |
+|-----|------------|----------|
+| Claude API | Per-account limits | Token bucket per agent |
+| GitHub API | 5000 req/hr (authenticated) | Shared rate limiter across all agents |
+
+```python
+from limits import strategies, storage
+
+# In-memory for local, Redis for cloud
+limiter_storage = storage.MemoryStorage()  # or RedisStorage()
+
+class RateLimitedClaudeClient:
+    def __init__(self):
+        self.limiter = strategies.FixedWindowRateLimiter(limiter_storage)
+        # Claude rate limits vary by tier; configure per deployment
+        self.rate_limit = parse("100/minute")
+
+    async def invoke(self, prompt: str, **kwargs) -> Response:
+        if not self.limiter.hit(self.rate_limit, "claude_api"):
+            raise RateLimitExceededError("Claude API rate limit reached")
+        return await self._client.invoke(prompt, **kwargs)
+```
+
+**Internal A2A Protection:**
+
+Agent-to-agent calls are trusted (internal cluster), but we still protect against
+runaway loops or misbehaving agents:
+
+```python
+# Per-agent-pair rate limit to detect consultation loops
+A2A_RATE_LIMIT = "50/minute"  # Per agent-to-agent pair
+
+async def send_a2a_task(from_agent: str, to_agent: str, task: Task) -> Response:
+    key = f"a2a:{from_agent}:{to_agent}"
+    if not limiter.hit(A2A_RATE_LIMIT, key):
+        logger.warning(f"A2A rate limit: {from_agent} → {to_agent}")
+        raise A2ARateLimitError(f"Too many consultations from {from_agent} to {to_agent}")
+    return await _send_task(to_agent, task)
+```
+
+### 11.7 Graceful Shutdown
+
+When Kubernetes terminates a pod (namespace deletion, rolling update, manual kill), we need
+to handle in-flight operations gracefully to avoid data loss.
+
+**The Problem:**
+
+```
+SIGTERM received → Pod has 30s (terminationGracePeriodSeconds) → SIGKILL
+                   ↓
+                   Without handling: Claude API calls abandoned, events not persisted
+```
+
+**Solution: SIGTERM Handler**
+
+```python
+import signal
+import asyncio
+
+class AgentPod:
+    def __init__(self):
+        self.shutdown_event = asyncio.Event()
+        self.active_tasks: set[asyncio.Task] = set()
+
+    def setup_signal_handlers(self):
+        """Register SIGTERM handler for graceful shutdown."""
+        loop = asyncio.get_event_loop()
+
+        def handle_sigterm():
+            logger.info("SIGTERM received, initiating graceful shutdown...")
+            self.shutdown_event.set()
+
+        loop.add_signal_handler(signal.SIGTERM, handle_sigterm)
+        loop.add_signal_handler(signal.SIGINT, handle_sigterm)
+
+    async def run(self):
+        """Main loop with shutdown awareness."""
+        self.setup_signal_handlers()
+
+        while not self.shutdown_event.is_set():
+            try:
+                # Check for work with timeout (allows shutdown check)
+                task = await asyncio.wait_for(
+                    self.get_next_task(),
+                    timeout=5.0
+                )
+                await self.process_task(task)
+            except asyncio.TimeoutError:
+                continue  # Loop back to check shutdown_event
+
+        # Graceful shutdown: wait for active tasks
+        await self.graceful_shutdown()
+
+    async def graceful_shutdown(self):
+        """Complete in-flight work before exiting."""
+        if not self.active_tasks:
+            logger.info("No active tasks, shutting down immediately")
+            return
+
+        logger.info(f"Waiting for {len(self.active_tasks)} active tasks to complete...")
+
+        # Wait up to 25s for tasks (leave 5s buffer before SIGKILL)
+        try:
+            await asyncio.wait_for(
+                asyncio.gather(*self.active_tasks, return_exceptions=True),
+                timeout=25.0
+            )
+            logger.info("All tasks completed, shutting down")
+        except asyncio.TimeoutError:
+            logger.warning("Shutdown timeout, some tasks may be incomplete")
+            # Log which tasks are still running for debugging
+            for task in self.active_tasks:
+                if not task.done():
+                    logger.warning(f"Incomplete task: {task.get_name()}")
+```
+
+**Orchestrator Checkpoint on Shutdown:**
+
+The orchestrator records its current state before exiting, enabling recovery on restart:
+
+```python
+class IssueOrchestrator:
+    async def graceful_shutdown(self):
+        """Checkpoint state before shutdown."""
+        if self.current_phase_task and not self.current_phase_task.done():
+            # Record that we were interrupted mid-phase
+            await self.event_store.append(PhaseInterrupted(
+                issue_id=self.issue_id,
+                phase=self.current_phase,
+                agent=self.current_agent,
+                reason="pod_termination",
+            ))
+            logger.info(f"Checkpointed interruption at phase {self.current_phase}")
+
+        # On restart, orchestrator will see PhaseInterrupted and retry the phase
+```
+
+**Kubernetes Configuration:**
+
+```yaml
+spec:
+  terminationGracePeriodSeconds: 30  # Default, adjust if needed
+  containers:
+    - name: agent
+      lifecycle:
+        preStop:
+          exec:
+            command: ["/bin/sh", "-c", "sleep 5"]  # Allow time for SIGTERM handling
+```
+
+**What Gets Protected:**
+
+| Operation | Without Graceful Shutdown | With Graceful Shutdown |
+|-----------|---------------------------|------------------------|
+| Claude API call | Abandoned mid-request | Completes or times out cleanly |
+| Event store write | May be lost | Completes before exit |
+| Git commit/push | Partial state | Completes or rolls back |
+| A2A consultation | Caller hangs | Returns error, caller retries |
+
+---
+
+## 12. Why Custom Workflow Engine
+
+We evaluated [Temporal](https://temporal.io/) but chose a custom event-sourced workflow engine.
+
+### 12.1 Why Not Temporal?
+
+| Factor | Temporal | Custom (our choice) |
+|--------|----------|---------------------|
+| **Workflow definition** | Code (Python/Go classes) | Data (JSON/YAML in DynamoDB) |
+| **AI modification** | Requires code changes, CI, deployment | AI can edit workflow JSON at runtime |
+| **Determinism** | Required for replay | Not needed (we don't replay AI outputs) |
+| **Ops burden** | Temporal cluster + workers | DynamoDB only |
+| **Learning curve** | New paradigm | Standard event sourcing |
+
+### 12.2 The Key Differentiator: Workflow-as-Data
+
+Our workflows are JSON definitions stored in DynamoDB:
+
+```json
+{
+  "id": "sdlc-standard",
+  "phases": ["SPECIFY", "PLAN", "TASKS", "TEST_DESIGN", "IMPLEMENT", "VERIFY", "REVIEW"],
+  "transitions": [
+    {"from": "SPECIFY", "to": "PLAN", "trigger": "success"},
+    {"from": "REVIEW", "to": "IMPLEMENT", "trigger": "feedback:minor_changes"},
+    ...
+  ],
+  "max_feedback_loops": 5
+}
+```
+
+**Why this matters:**
+1. **AI-modifiable**: Baron can adjust the workflow graph mid-execution based on feature complexity
+2. **No deployment needed**: Workflow changes don't require CI/CD
+3. **Dynamic adaptation**: Skip phases for trivial changes, add phases for complex features
+4. **A/B testing**: Run different workflow variants without code changes
+
+### 12.3 Trade-offs Accepted
+
+By choosing custom over Temporal, we accept:
+- Building and maintaining event sourcing ourselves
+- Building and maintaining checkpointing ourselves
+- No built-in visibility UI (we'll build a simpler one)
+- No built-in retry policies (we implement with tenacity)
+
+These trade-offs are acceptable because workflow-as-data enables AI agents to participate
+in workflow design, which is central to our vision.
+
+---
+
+## 13. Security
+
+### 13.1 Claude Agent SDK Authentication
+
+> **IMPORTANT:** We use the **Claude Agent SDK** which authenticates via **OAuth** (Claude
+> Pro/Max subscription), NOT via Anthropic API keys. Do not confuse this with the `anthropic`
+> Python package which requires `ANTHROPIC_API_KEY`.
+
+**How it works:**
+
+1. Claude Code CLI stores OAuth tokens in `~/.claude/` after user login
+2. The Claude Agent SDK reads these tokens automatically
+3. Agent pods mount this config directory as a secret
+4. No API keys are needed or used
+
+**Local Development:**
+
+```bash
+# 1. Login to Claude Code (one-time setup)
+claude login
+
+# 2. Copy OAuth config to k3d secret
+kubectl create secret generic claude-oauth-config \
+  --from-file=config.json=$HOME/.claude/config.json \
+  --from-file=credentials.json=$HOME/.claude/credentials.json
+```
+
+**Cloud (EKS):**
+
+For production, the OAuth tokens are stored in AWS Secrets Manager and synced to K8s:
+
+```yaml
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: claude-oauth-config
+spec:
+  secretStoreRef:
+    name: aws-secrets-manager
+    kind: ClusterSecretStore
+  target:
+    name: claude-oauth-config
+  data:
+    - secretKey: config.json
+      remoteRef:
+        key: farmercode/claude-oauth-config
+    - secretKey: credentials.json
+      remoteRef:
+        key: farmercode/claude-oauth-credentials
+```
+
+### 13.2 Credential Manager Service
+
+**The Problem:**
+
+Claude Code CLI expects `credentials.json` on disk and refreshes tokens frequently. With
+600+ pods (12 agents × 50 concurrent issues) sharing credentials:
+
+- If each pod has a copy from K8s secret → tokens desync after first refresh
+- If Pod A refreshes → Pod B still has stale token → auth fails
+- K8s secrets don't auto-update when tokens refresh
+
+**Solution: Central Credential Manager**
+
+A lightweight service that holds the canonical credentials and handles all token refreshes:
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                      Credential Manager Service                                  │
+│                      (Single instance in farmercode namespace)                   │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                  │
+│  Startup:                                                                        │
+│    - Load credentials.json from K8s secret (seeded from initial `claude login`) │
+│                                                                                  │
+│  Background loop (every 5 min):                                                  │
+│    - Check if access_token expires within 10 min                                 │
+│    - If yes → use refresh_token to get new tokens (mutex-protected)              │
+│    - Write updated credentials.json                                              │
+│                                                                                  │
+│  GET /credentials:                                                               │
+│    - Return current credentials.json content                                     │
+│    - Pods call this on startup + every 15 min                                    │
+│                                                                                  │
+└─────────────────────────────────────────────────────────────────────────────────┘
+         ▲           ▲           ▲           ▲
+         │           │           │           │
+    ┌────┴───┐  ┌────┴───┐  ┌────┴───┐  ┌────┴───┐
+    │ Baron  │  │  Duc   │  │ Marie  │  │  ...   │  (600+ pods fetch credentials)
+    └────────┘  └────────┘  └────────┘  └────────┘
+```
+
+**Timing Configuration:**
+
+| Setting | Value | Reason |
+|---------|-------|--------|
+| Check interval | 5 min | Catch token expiry early |
+| Refresh threshold | 10 min before expiry | Buffer to avoid expired tokens |
+| Pod refresh interval | 15 min | Get updates after service refreshes |
+
+**Credential Manager Implementation:**
+
+```python
+class CredentialManager:
+    CHECK_INTERVAL = timedelta(minutes=5)
+    REFRESH_THRESHOLD = timedelta(minutes=10)
+
+    def __init__(self):
+        self.credentials_path = "/data/credentials.json"
+        self.lock = asyncio.Lock()
+
+    async def refresh_loop(self):
+        """Background task - runs continuously."""
+        while True:
+            await self.refresh_if_needed()
+            await asyncio.sleep(self.CHECK_INTERVAL.total_seconds())
+
+    async def refresh_if_needed(self):
+        """Check token expiry and refresh if needed."""
+        async with self.lock:  # Prevent concurrent refreshes
+            creds = self.load_credentials()
+            expires_at = self.decode_token_expiry(creds["access_token"])
+            time_left = expires_at - datetime.now()
+
+            if time_left < self.REFRESH_THRESHOLD:
+                logger.info(f"Token expires in {time_left}, refreshing...")
+                new_tokens = await self.refresh_tokens(creds["refresh_token"])
+                creds["access_token"] = new_tokens["access_token"]
+                if "refresh_token" in new_tokens:  # Handle rotation
+                    creds["refresh_token"] = new_tokens["refresh_token"]
+                self.save_credentials(creds)
+                logger.info("Token refreshed successfully")
+
+    @app.get("/credentials")
+    async def get_credentials(self) -> dict:
+        """Endpoint for pods to fetch current credentials."""
+        return self.load_credentials()
+
+    async def refresh_tokens(self, refresh_token: str) -> dict:
+        """Call Claude's OAuth token refresh endpoint."""
+        # This replicates what Claude Code CLI does internally
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                "https://auth.anthropic.com/oauth/token",
+                data={
+                    "grant_type": "refresh_token",
+                    "refresh_token": refresh_token,
+                    "client_id": CLAUDE_CODE_CLIENT_ID,
+                }
+            )
+            return response.json()
+```
+
+**Pod Startup (updated):**
+
+```python
+class AgentPod:
+    CREDENTIAL_REFRESH_INTERVAL = timedelta(minutes=15)
+
+    async def startup(self):
+        # Fetch credentials from central service (not K8s secret)
+        await self.refresh_credentials()
+
+        # Schedule periodic refresh
+        asyncio.create_task(self.credential_refresh_loop())
+
+        # Continue with normal startup...
+        self.config = await fetch_agent_config(...)
+
+    async def credential_refresh_loop(self):
+        """Periodically fetch fresh credentials from central service."""
+        while True:
+            await asyncio.sleep(self.CREDENTIAL_REFRESH_INTERVAL.total_seconds())
+            await self.refresh_credentials()
+
+    async def refresh_credentials(self):
+        """Fetch credentials from Credential Manager and write to disk."""
+        response = await httpx.get("http://credential-manager.farmercode.svc:8080/credentials")
+        creds = response.json()
+        Path("/home/agent/.claude/credentials.json").write_text(json.dumps(creds))
+        logger.debug("Credentials refreshed from central service")
+```
+
+**Kubernetes Deployment:**
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: credential-manager
+  namespace: farmercode
+spec:
+  replicas: 1  # Single instance to avoid refresh conflicts
+  selector:
+    matchLabels:
+      app: credential-manager
+  template:
+    metadata:
+      labels:
+        app: credential-manager
+    spec:
+      containers:
+        - name: credential-manager
+          image: ghcr.io/farmer1st/credential-manager:latest
+          ports:
+            - containerPort: 8080
+          volumeMounts:
+            - name: credentials
+              mountPath: /data
+      volumes:
+        - name: credentials
+          secret:
+            secretName: claude-oauth-config  # Initial seed
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: credential-manager
+  namespace: farmercode
+spec:
+  selector:
+    app: credential-manager
+  ports:
+    - port: 8080
+```
+
+**Why Single Instance?**
+
+- Token refresh must be serialized (one refresh at a time)
+- Multiple instances would cause race conditions
+- Single instance with mutex is simple and reliable
+- If it crashes, K8s restarts it; pods retry on next interval
+
+### 13.3 Other Secrets
+
+| Secret | Storage (Local) | Storage (Cloud) | Rotation |
+|--------|-----------------|-----------------|----------|
+| Claude OAuth config | Credential Manager Service | Credential Manager + AWS Secrets Manager | Automatic (see 13.2) |
+| GitHub App keys | `.env` file | AWS Secrets Manager → K8s Secret | Manual, quarterly |
+| DynamoDB credentials | Not needed (local) | IAM role (IRSA) | Automatic |
+
+### 13.4 Future Enhancements (v2)
+
+| Enhancement | Purpose |
+|-------------|---------|
+| mTLS between agent pods | Encrypt agent-to-agent communication |
+| NetworkPolicy | Restrict which pods can communicate |
+| Audit logging | Log credential access for compliance |
+| RBAC per issue | Isolate feature access by team |
+
+---
+
+## 14. Testing Strategy
+
+### 14.1 Mock Claude Responses
+
+Testing agents without hitting Claude API (expensive, slow, non-deterministic):
+
+```python
+# tests/conftest.py
+import pytest
+from unittest.mock import AsyncMock
+
+@pytest.fixture
+def mock_claude_runtime():
+    """Replace ClaudeAgentRuntime with deterministic mock."""
+    runtime = AsyncMock()
+    runtime.invoke.return_value = AgentResponse(
+        content="Generated specification for user authentication...",
+        confidence=85,
+        artifacts=[{"type": "file", "path": ".specify/spec.md"}],
+        status="completed",
+    )
+    return runtime
+
+# tests/test_baron.py
+async def test_baron_specify_creates_spec(mock_claude_runtime):
+    baron = BaronAgent(runtime=mock_claude_runtime)
+    result = await baron.specify("Add user authentication")
+
+    assert result.status == "completed"
+    assert result.confidence >= 80
+    mock_claude_runtime.invoke.assert_called_once()
+```
+
+### 14.2 Test Levels
+
+| Level | What | Claude | Location |
+|-------|------|--------|----------|
+| Unit | Single functions | Mock | `services/*/tests/unit/` |
+| Integration | Multi-component | Mock | `services/*/tests/integration/` |
+| Contract | API contracts | Mock | `services/*/tests/contract/` |
+| E2E | Full workflow | Mock | `services/tests/e2e/` |
+
+### 14.3 Mock Maintenance
+
+```
+tests/
+├── fixtures/
+│   └── claude_responses/
+│       ├── baron_specify_auth.json     # Recorded real response
+│       ├── baron_plan_auth.json
+│       ├── marie_tests_auth.json
+│       └── ...
+├── conftest.py                          # Mock fixtures
+```
+
+**Update process:**
+1. Periodically record real Claude responses for representative tasks
+2. Store in `tests/fixtures/claude_responses/`
+3. Update when prompts change significantly
+4. Flag tests that use stale fixtures (>90 days old)
+
+### 14.4 Operator Testing
+
+```python
+# tests/test_operator.py
+import kopf.testing
+
+async def test_feature_workflow_creates_pods():
+    with kopf.testing.KopfRunner(['run', 'operator.py']) as runner:
+        # Create IssueWorkflow CRD
+        kubectl_create(FEATURE_WORKFLOW_YAML)
+
+        # Wait for pods
+        await wait_for_pods(namespace='farmercode', count=5)
+
+        # Verify orchestrator + agent pods exist
+        pods = list_pods(namespace='farmercode')
+        assert any('orchestrator' in p.name for p in pods)
+        assert any('baron' in p.name for p in pods)
 ```
 
 ---
 
-## 12. CI/CD Pipeline
+## 15. CI/CD Pipeline
 
-### 12.1 Repository Structure
+### 15.1 Repository Structure
 
 | Repository | Purpose | CI Output |
 |------------|---------|-----------|
@@ -1580,7 +3232,7 @@ async def check_stale_escalations():
 | `farmcode` | Farmer Code app | Container images |
 | `farmer1st-gitops` | K8s manifests | ArgoCD sync |
 
-### 12.2 GitHub Actions Workflows
+### 15.2 GitHub Actions Workflows
 
 **farmcode CI/CD:**
 
@@ -1661,7 +3313,7 @@ jobs:
           directory: pwa/dist
 ```
 
-### 12.3 ArgoCD Image Updater
+### 15.3 ArgoCD Image Updater
 
 ```yaml
 # argocd/apps/farmercode.yaml
@@ -1687,9 +3339,9 @@ spec:
 
 ---
 
-## 13. Observability
+## 16. Observability
 
-### 13.1 Stack
+### 16.1 Stack
 
 | Component | Tool | Purpose |
 |-----------|------|---------|
@@ -1699,7 +3351,7 @@ spec:
 | Frontend | Grafana Faro | PWA performance, errors |
 | Collection | Grafana Alloy | OTEL collector in cluster |
 
-### 13.2 Key Metrics
+### 16.2 Key Metrics
 
 | Metric | Description |
 |--------|-------------|
@@ -1708,10 +3360,10 @@ spec:
 | `agent.invocation.duration` | Agent response time |
 | `agent.invocation.tokens` | Tokens used per invocation |
 | `agent.confidence.score` | Confidence distribution |
-| `escalation.count` | Human escalations per feature |
+| `escalation.count` | Human escalations per issue |
 | `escalation.response_time` | Human response latency |
 
-### 13.3 Tracing
+### 16.3 Tracing
 
 ```python
 from opentelemetry import trace
@@ -1734,28 +3386,137 @@ async def invoke_agent(agent: str, version: str, prompt: str):
 
 ---
 
-## 14. Future: Chat Portal
+## 17. Future: Chat Portal
 
 A separate application for direct human-agent interaction:
 
-### 14.1 Purpose
+### 17.1 Purpose
 
+- **Backlog refinement**: Chat with agents to refine issues before they're READY
+- **Issue creation**: Help humans articulate feature requests or bug reports
 - Chat with any agent (not just SDLC agents)
 - Update agent KB and prompts
 - Review/approve KB changes (commits to GitHub)
-- No worktree needed (not tied to features)
+- No worktree needed (not tied to issues)
 
-### 14.2 Architecture Differences
+### 17.2 Backlog Refinement Flow
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                        Chat Portal: Backlog Refinement                           │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                  │
+│  Human: "I want users to be able to reset their passwords"                       │
+│       │                                                                          │
+│       ▼                                                                          │
+│  Chat Portal → Veuve (Product Owner)                                             │
+│       │                                                                          │
+│       ▼                                                                          │
+│  Veuve: "Should this include email verification? What about SMS as fallback?"   │
+│       │                                                                          │
+│       ▼                                                                          │
+│  Human: "Yes email, no SMS for now"                                              │
+│       │                                                                          │
+│       ▼                                                                          │
+│  Veuve creates/updates GitHub Issue #123 with refined description               │
+│       │                                                                          │
+│       ▼                                                                          │
+│  Human reviews issue, adds "READY" label when satisfied                          │
+│       │                                                                          │
+│       ▼                                                                          │
+│  Farmer Code workflow starts automatically                                       │
+│                                                                                  │
+└─────────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 17.3 Architecture Differences
 
 | Aspect | Farmer Code | Chat Portal |
 |--------|-------------|-------------|
-| Agents | SDLC subset (Baron, Duc, Marie, Dede) | All agents (HR, FinOps, etc.) |
-| Pods | Ephemeral (per feature) | Permanent (always running) |
-| Escalation | Enabled | Disabled |
+| Namespace | `fc-{issue-id}` (ephemeral) | `ai-agents` (permanent) |
+| Agents | SDLC workflow agents | All agents (Veuve, Duc, future HR, FinOps) |
+| Pods | Ephemeral (per issue, deleted on completion) | Permanent (always running, shared) |
+| Escalation | Enabled | Disabled (human is already present) |
 | Worktree | Required | Not needed |
-| Context | Feature-scoped | User session-scoped |
+| Context | Issue-scoped | User session-scoped |
+| Purpose | Execute workflow | Refine backlog, update KB, brainstorm, roadmap |
 
-### 14.3 MkDocs Integration (Concept)
+**Same Image, Different Config:**
+
+Agents in both namespaces use the **same container image** (`ghcr.io/farmer1st/agent-runtime`).
+The only differences are environment variables:
+
+| Variable | Workflow (`fc-*`) | Chat Portal (`ai-agents`) |
+|----------|-------------------|---------------------------|
+| `ESCALATION_ENABLED` | `true` | `false` |
+| `WORKTREE_PATH` | `/volumes/worktrees/{issue}` | Not set |
+| `ISSUE_ID` | `{issue-id}` | Not set |
+
+**Why Duplicate Instead of Share?**
+
+| Option | Pros | Cons |
+|--------|------|------|
+| **Shared pools** | Lower cost (fewer pods) | Complex routing, session affinity, context leakage risk |
+| **Duplicate pods** | Simple isolation, no routing | Higher cost (more pods) |
+
+We choose **duplication for simplicity**. Cost optimization via shared pools can be
+explored later when scale justifies the added complexity. For now:
+
+- Each workflow gets its own isolated agent pods
+- Chat Portal has its own permanent agent pods
+- No cross-namespace communication needed
+- Easy to debug and reason about
+
+### 17.4 Permanent Agent Deployment
+
+Chat Portal agents live in the `ai-agents` namespace and are always running:
+
+```yaml
+# apps/chat-portal-agents.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: baron
+  namespace: ai-agents
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      agent: baron
+  template:
+    metadata:
+      labels:
+        agent: baron
+        app: chat-portal
+    spec:
+      containers:
+        - name: agent
+          image: ghcr.io/farmer1st/agent-runtime:latest
+          env:
+            - name: AGENT_NAME
+              value: baron
+            - name: AGENT_VERSION
+              value: "2.0.0"
+            - name: ESCALATION_ENABLED
+              value: "false"  # Human is present in chat
+          ports:
+            - containerPort: 8002
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: baron
+  namespace: ai-agents
+spec:
+  selector:
+    agent: baron
+  ports:
+    - port: 8002
+```
+
+**Service discovery:** Chat Portal backend (in `ai-agents` namespace) calls agents via simple names: `http://baron:8002` (see Section 5.5)
+
+### 17.5 MkDocs Integration (Concept)
 
 Custom MkDocs plugin for KB editing via chat:
 
@@ -1780,17 +3541,23 @@ Merged → Agent picks up new version on next refresh
 
 ---
 
-## 15. Open Questions
+## 18. Open Questions
 
 | # | Question | Options | Decision |
 |---|----------|---------|----------|
 | 1 | Agent pod resource limits | Fixed vs autoscaling | TBD |
 | 2 | Conversation archival | S3 vs DynamoDB | TBD |
 | 3 | Multi-region | Single region vs global | Single (start simple) |
-| 4 | Agent hot-reload frequency | 1min / 5min / 15min | 5min |
-| 5 | Max concurrent features | 10 / 50 / unlimited | TBD |
+| 4 | Chat Portal agent config refresh | 1min / 5min / 15min | 5min |
+| 5 | Max concurrent issues | 10 / 50 / unlimited | TBD |
 | 6 | Worktree storage (EKS) | EFS vs EBS | EFS (shared) |
-| 7 | Claude credentials rotation | Manual vs automated | Manual (initially) |
+
+**Note on Question 4:** This applies to the **Chat Portal (Section 17)** where agents are
+long-running and may need to refresh their config. Farmer Code issue pods (Section 2.5)
+load config once at startup and don't hot-reload—they terminate when the feature completes.
+
+**Note on Authentication:** Claude Agent SDK uses OAuth tokens (Claude Pro/Max subscription),
+NOT API keys. OAuth tokens refresh automatically. See Section 13.1.
 
 ---
 
@@ -1800,7 +3567,7 @@ Merged → Agent picks up new version on next refresh
 |-------|------------|
 | **Frontend** | React, TypeScript, Vite, Tailwind, shadcn/ui |
 | **Backend** | Python 3.11+, FastAPI, Pydantic v2 |
-| **Agent Runtime** | Claude Agent SDK (abstracted) |
+| **Agent Runtime** | Claude Agent SDK (OAuth, not API keys) |
 | **Database** | DynamoDB (local + cloud) |
 | **Container Registry** | GitHub Container Registry (GHCR) |
 | **Orchestration** | Kubernetes (k3d local, EKS cloud) |
@@ -1808,8 +3575,11 @@ Merged → Agent picks up new version on next refresh
 | **CI/CD** | GitHub Actions, ArgoCD, Image Updater |
 | **Frontend Hosting** | CloudFlare Pages |
 | **Observability** | OpenTelemetry, Grafana Alloy, Grafana Cloud, Faro |
-| **Secrets** | AWS Secrets Manager, K8s Secrets |
+| **Secrets** | OAuth tokens, AWS Secrets Manager, K8s Secrets |
 | **Source Control** | GitHub (monorepo for agents) |
+
+> **Reference Implementation:** See `../sdk-agent-poc` for a working Claude Agent SDK example
+> showing OAuth authentication, built-in tools, and custom MCP tools.
 
 ---
 
@@ -1819,19 +3589,30 @@ Merged → Agent picks up new version on next refresh
 |------|------------|
 | **A2A** | Agent-to-Agent protocol for inter-agent communication |
 | **Agent Card** | JSON descriptor of agent capabilities and skills |
+| **ai-agents** | Permanent Kubernetes namespace for Chat Portal agents (always running) |
+| **Backlog** | GitHub issues without "READY" label; refined via Chat Portal |
 | **Circuit Breaker** | Pattern to prevent cascade failures by failing fast when a service is unhealthy |
+| **Claude Agent SDK** | Python SDK for building agents with Claude; uses OAuth authentication (not API keys) |
 | **Confidence Score** | 0-100 rating of agent's certainty in its response |
 | **CRD** | Custom Resource Definition (Kubernetes) |
-| **Escalation** | Routing low-confidence decisions to humans |
+| **Domain** | Task category (backend, frontend, gitops, test) determining which agent handles it |
+| **Escalation** | Routing low-confidence decisions to humans via HumanProduct or HumanTech |
 | **Event Sourcing** | Storing state changes as immutable events; state computed via replay |
-| **Feature Workflow** | K8s custom resource representing a feature in progress |
+| **fc-{issue-id}** | Ephemeral Kubernetes namespace for Issue Workflow agents (deleted on completion) |
 | **Feedback Loop** | Workflow transition back to an earlier phase based on agent output |
 | **Git Optimistic Lock** | Push-rebase-retry pattern for handling concurrent git modifications |
+| **Human Bridge** | Deterministic agent (HumanProduct, HumanTech) that bridges to actual humans |
 | **Idempotency Key** | Unique identifier to prevent duplicate operations on retry |
+| **Issue Workflow** | K8s custom resource representing a GitHub issue being processed |
 | **kopf** | Kubernetes Operator Pythonic Framework |
 | **Projection** | Computed view of current state derived from event history |
+| **READY Label** | GitHub label that triggers workflow start for an issue |
 | **Rehydration** | Rebuilding state by replaying events from the event store |
-| **Stop-and-Go** | Workflow pattern where jobs checkpoint and exit rather than waiting idle |
-| **Watchdog** | Cron job to catch missed webhook responses and resume stale workflows |
-| **Worktree** | Git worktree for isolated feature development |
+| **RETRO** | Final workflow phase where Socrate analyzes the issue lifecycle and proposes improvements |
+| **Smart Escalation** | Baron/Victor/Socrate ability to choose between HumanProduct and HumanTech |
+| **Socrate** | Learning loop agent that analyzes completed issues and proposes prompt/KB improvements |
 | **SpecKit** | Framework for spec-driven development (specify, plan, tasks) |
+| **Stop-and-Go** | Future workflow pattern where jobs checkpoint and exit rather than waiting idle (v1 uses polling instead) |
+| **Vertical Escalation** | Consulted agent escalates to human (not the requester) |
+| **Watchdog** | Cron job to catch missed escalation responses and resume stale workflows |
+| **Worktree** | Git worktree for isolated issue development |
