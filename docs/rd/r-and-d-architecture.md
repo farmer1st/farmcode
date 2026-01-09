@@ -1,6 +1,6 @@
 # Farmer1st Architecture Proposal
 
-**Version:** 0.3.15-draft
+**Version:** 0.3.16-draft
 **Status:** R&D Discussion
 **Last Updated:** 2026-01-09
 
@@ -2001,6 +2001,181 @@ class IssueOrchestrator:
 When `GitStateError` is raised, the orchestrator records a `PhaseFailed` event and stops
 the workflow. This requires human investigation — the git state is inconsistent with what
 the workflow expects.
+
+### 7.5 Release and Deployment Flow
+
+After code passes VERIFY phase and PR is merged to main, features flow through environment
+branches for deployment. This enables feature-scoped rollback and clear promotion gates.
+
+**Monorepo Context:**
+
+Farmer Code builds monorepo apps with this structure:
+
+```
+my-app/
+├── frontend/      → frontend:sha-abc123 (image)
+├── backend/       → backend:sha-def456 (image)
+├── worker/        → worker:sha-ghi789 (image)
+└── gitops/        → deployment manifests
+    ├── frontend/deployment.yaml
+    ├── backend/deployment.yaml
+    └── worker/deployment.yaml
+```
+
+**Environment Branches:**
+
+```
+main                    # Source code, merged PRs
+├── env/dev            # GitOps: what's deployed to dev
+├── env/staging        # GitOps: what's deployed to staging
+└── env/prod           # GitOps: what's deployed to prod
+```
+
+**Release Lifecycle:**
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                        Feature #42 Release Lifecycle                             │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                  │
+│  1. Code Development (feature branch)                                            │
+│     └── Branch: feature/42-user-avatars                                          │
+│         ├── frontend/src/Avatar.tsx (changed)                                    │
+│         ├── backend/src/avatar.py (changed)                                      │
+│         └── worker/ (unchanged)                                                  │
+│                                                                                  │
+│  2. Code PR Merged to Main                                                       │
+│     └── CI triggers:                                                             │
+│         ├── Build frontend:sha-abc123 (new)                                      │
+│         ├── Build backend:sha-def456 (new)                                       │
+│         └── Skip worker (no changes)                                             │
+│                                                                                  │
+│  3. GitOps PR for Dev Deployment                                                 │
+│     └── Branch: deploy/42-to-dev (from env/dev)                                  │
+│         └── Changes:                                                             │
+│             ├── gitops/frontend/deployment.yaml → image: frontend:sha-abc123     │
+│             └── gitops/backend/deployment.yaml → image: backend:sha-def456       │
+│                                                                                  │
+│     └── Merge to env/dev → ArgoCD syncs → Only frontend+backend redeploy         │
+│         (worker unchanged, ArgoCD does nothing to it)                            │
+│                                                                                  │
+│  4. Promote to Staging (after dev validation)                                    │
+│     └── Branch: deploy/42-to-staging (from env/staging)                          │
+│         └── Same image tags as dev (sha-abc123, sha-def456)                      │
+│                                                                                  │
+│     └── Merge to env/staging → ArgoCD syncs → Only changed services deploy       │
+│                                                                                  │
+│  5. Promote to Prod (after staging validation)                                   │
+│     └── Branch: deploy/42-to-prod (from env/prod)                                │
+│         └── Same image tags                                                      │
+│                                                                                  │
+│     └── Merge to env/prod → ArgoCD syncs → Production deployment                 │
+│                                                                                  │
+└─────────────────────────────────────────────────────────────────────────────────┘
+```
+
+**ArgoCD Behavior:**
+
+ArgoCD compares desired state (git) vs actual state (cluster). When a gitops commit only
+changes frontend and backend image tags:
+
+| Service | Manifest Changed? | ArgoCD Action |
+|---------|-------------------|---------------|
+| frontend | Yes (new image tag) | Redeploy |
+| backend | Yes (new image tag) | Redeploy |
+| worker | No | No action |
+
+This means:
+- **Deployment is surgical** — only affected services redeploy
+- **Rollback is feature-scoped** — reverting the gitops commit only affects services that were part of that feature
+
+**Deployment Tracking (DynamoDB):**
+
+```python
+@dataclass
+class FeatureDeployment:
+    """Track what's deployed where for rollback capability."""
+    issue_id: str              # "42"
+    environment: str           # "dev", "staging", "prod"
+    gitops_commit_sha: str     # Commit on env/dev that deployed this
+    previous_gitops_sha: str   # For easy rollback
+    services_changed: list[str]  # ["frontend", "backend"]
+    image_tags: dict[str, str]  # {"frontend": "sha-abc123", "backend": "sha-def456"}
+    deployed_at: datetime
+    deployed_by: str           # "gus" (agent) or "human:@john"
+```
+
+**DynamoDB Schema:**
+
+```
+PK                     SK                              Attributes
+─────────────────────────────────────────────────────────────────
+deploy#42             env#dev                         {gitops_sha, services, images, ...}
+deploy#42             env#staging                     {gitops_sha, services, images, ...}
+deploy#42             env#prod                        {gitops_sha, services, images, ...}
+deploy#43             env#dev                         {...}
+```
+
+**Rollback Flow:**
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                        Rollback Feature #42 from Dev                             │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                  │
+│  Human/Agent: "/rollback feature #42 from dev"                                   │
+│       │                                                                          │
+│       ▼                                                                          │
+│  Gus looks up deployment record:                                                 │
+│    - gitops_commit_sha: "abc123"                                                 │
+│    - previous_gitops_sha: "xyz789"                                               │
+│    - services_changed: ["frontend", "backend"]                                   │
+│       │                                                                          │
+│       ▼                                                                          │
+│  Gus creates revert PR:                                                          │
+│    Branch: rollback/42-from-dev (from env/dev)                                   │
+│    Changes: Revert commit abc123 (restores previous image tags)                  │
+│       │                                                                          │
+│       ▼                                                                          │
+│  Merge to env/dev → ArgoCD syncs                                                 │
+│       │                                                                          │
+│       ▼                                                                          │
+│  Only frontend and backend roll back to previous versions                        │
+│  (worker unaffected — wasn't part of feature #42)                                │
+│                                                                                  │
+└─────────────────────────────────────────────────────────────────────────────────┘
+```
+
+**Why This Design:**
+
+| Aspect | Benefit |
+|--------|---------|
+| **PRs for gitops** | Audit trail, review, easy revert (not direct commits) |
+| **Env branches** | Clear separation: env/dev, env/staging, env/prod |
+| **Feature-scoped deployment** | Only affected services deploy (ArgoCD is smart) |
+| **Feature-scoped rollback** | Revert one feature without affecting others |
+| **Immutable image tags** | Same sha-abc123 flows dev → staging → prod |
+| **Deployment tracking** | Know exactly what's where, enable safe rollback |
+
+**Gus Agent Role:**
+
+The Gus (DevOps) agent handles all release operations:
+
+| Phase | Gus's Actions |
+|-------|---------------|
+| RELEASE_DEV | Create PR to env/dev, merge after CI passes |
+| RELEASE_STAGING | Create PR to env/staging after dev validation |
+| RELEASE_PROD | Create PR to env/prod after staging validation |
+| Rollback | Look up deployment record, create revert PR |
+
+**Promotion Triggers:**
+
+| Trigger | Action |
+|---------|--------|
+| PR merge to main | Gus creates deploy PR to env/dev (automatic) |
+| Human approval | Gus creates deploy PR to env/staging |
+| Human approval | Gus creates deploy PR to env/prod |
+| Rollback request | Gus creates revert PR to target env |
 
 ---
 
