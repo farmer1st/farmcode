@@ -7,7 +7,8 @@
 > **v0.4.0 Changes:** Simplified architecture - replaced DynamoDB with Git-Journaling,
 > replaced Event Sourcing with simple State Machine, added self-healing rewind (always
 > to SPECIFY), added Brain/Muscle node strategy, added Town Crier for AWAIT states,
-> added Vauban agent for releases, updated workflow phases (MERGE, AWAIT_STAGING, AWAIT_PROD).
+> added Vauban agent for releases, updated workflow phases (MERGE, AWAIT_STAGING, AWAIT_PROD),
+> switched to A2A REST binding (from JSON-RPC) for simpler agent communication.
 
 ## Executive Summary
 
@@ -33,7 +34,7 @@ Key design principles:
 2. [Agent Architecture](#2-agent-architecture)
 3. [Farmer Code (SDLC App)](#3-farmer-code-sdlc-app)
 4. [Kubernetes Infrastructure](#4-kubernetes-infrastructure)
-5. [Agent Communication (A2A)](#5-agent-communication-a2a)
+5. [Agent Communication (A2A REST Binding)](#5-agent-communication-a2a-rest-binding)
 6. [Human Escalation](#6-human-escalation)
 7. [GitHub Integration](#7-github-integration)
 8. [Persistence (Git-Journaling)](#8-persistence-git-journaling)
@@ -1803,138 +1804,214 @@ If Vauban returns REJECT → rewind to SPECIFY
 
 ---
 
-## 5. Agent Communication (A2A)
+## 5. Agent Communication (A2A REST Binding)
 
-We implement the [Google A2A Protocol](https://github.com/google/A2A) for agent-to-agent
-communication. A2A is an open protocol that defines JSON-RPC 2.0 endpoints for agent discovery and task execution.
+We implement the [Google A2A Protocol](https://github.com/google/A2A) using the **REST binding**.
+A2A supports multiple bindings (JSON-RPC, gRPC, REST) — we chose REST for simplicity and alignment
+with our "lite" architecture philosophy.
 
 ### 5.1 Protocol Overview
 
-Agents communicate using JSON-RPC 2.0 over HTTP:
+Orchestrator communicates with agents using simple REST endpoints:
 
 ```
-┌──────────────┐         A2A Request (JSON-RPC 2.0)         ┌──────────────┐
-│              │ ──────────────────────────────────────────▶│              │
-│    Baron     │  POST http://duc:8002/a2a                   │     Duc      │
-│              │  {"jsonrpc":"2.0","method":"tasks/send",...}│              │
-│              │                                             │              │
-│              │         A2A Response                        │              │
+┌──────────────┐                                           ┌──────────────┐
+│              │  POST /jobs                               │              │
+│ Orchestrator │ ──────────────────────────────────────────▶│    Agent     │
+│              │  {phase, context, issue_id}               │   (Baron)    │
+│              │                                           │              │
+│              │  201 Created                              │              │
 │              │ ◀──────────────────────────────────────────│              │
-│              │  {"jsonrpc":"2.0","result":{"id":"..."},...}│              │
-└──────────────┘                                             └──────────────┘
+│              │  {job_id: "job-abc123"}                   │              │
+│              │                                           │              │
+│              │  GET /jobs/job-abc123                     │              │
+│              │ ──────────────────────────────────────────▶│              │
+│              │                                           │              │
+│              │  200 OK                                   │              │
+│              │ ◀──────────────────────────────────────────│              │
+│              │  {phase: "specify", outcome: "pass"}      │              │
+└──────────────┘                                           └──────────────┘
 ```
 
-**A2A Endpoints:**
+**REST Endpoints:**
 
 | Endpoint | Method | Purpose |
 |----------|--------|---------|
-| `/.well-known/agent.json` | GET | Agent discovery (capabilities) |
-| `/a2a` | POST | JSON-RPC 2.0 endpoint for all operations |
+| `/.well-known/agent.json` | GET | Agent discovery (A2A standard) |
+| `/jobs` | POST | Create a new job |
+| `/jobs/{job_id}` | GET | Poll job status |
+| `/jobs/{job_id}` | DELETE | Cancel a running job |
+| `/health` | GET | Liveness/readiness probe |
 
-**JSON-RPC Methods:**
+### 5.2 Job Lifecycle
 
-| Method | Purpose |
-|--------|---------|
-| `tasks/send` | Send a task to an agent |
-| `tasks/sendSubscribe` | Send task with SSE streaming |
-| `tasks/get` | Get task status/result |
-| `tasks/cancel` | Cancel a running task |
-
-### 5.2 Task Lifecycle States
-
-| State | Description |
-|-------|-------------|
-| `submitted` | Task received, queued for processing |
+| Status | Description |
+|--------|-------------|
+| `pending` | Job received, queued |
 | `working` | Agent actively processing |
-| `input-required` | Blocked on human input (triggers escalation) |
-| `completed` | Successfully finished |
+| `completed` | Finished with outcome |
 | `failed` | Error occurred |
-| `canceled` | Task was canceled |
+| `canceled` | Job was canceled |
 
-### 5.3 Streaming Responses
+**Outcome values** (when status is `completed`):
 
-For long-running tasks, agents use SSE via `tasks/sendSubscribe`:
+| Outcome | Meaning |
+|---------|---------|
+| `pass` | Phase succeeded, advance to next |
+| `reject` | Phase failed, rewind to SPECIFY |
+| `waiting_for_ci` | Hibernating until Town Crier wakes |
+
+### 5.3 Request/Response Schemas
+
+**POST /jobs - Create Job:**
 
 ```python
-@app.post("/a2a")
-async def a2a_endpoint(request: JSONRPCRequest):
-    if request.method == "tasks/sendSubscribe":
-        return StreamingResponse(
-            stream_task(request.params),
-            media_type="text/event-stream"
-        )
-    # ... handle other methods
+class CreateJobRequest(BaseModel):
+    phase: str                    # "specify", "plan", etc.
+    issue_id: str                 # "issue-42"
+    context: dict                 # Phase-specific context
+    rewind_context: dict | None   # Present if this is a rewind
 
-async def stream_task(params: dict):
-    task_id = generate_task_id()
+class CreateJobResponse(BaseModel):
+    job_id: str                   # "job-abc123"
+    status: str                   # "pending"
 
-    # Task submitted
-    yield f"data: {json.dumps({'jsonrpc': '2.0', 'result': {'id': task_id, 'status': {'state': 'submitted'}}})}\n\n"
+# Example
+POST /jobs
+{
+    "phase": "specify",
+    "issue_id": "issue-42",
+    "context": {
+        "repo": "farmer1st/myapp",
+        "feature_description": "Add user authentication"
+    }
+}
 
-    # Task working
-    yield f"data: {json.dumps({'jsonrpc': '2.0', 'result': {'id': task_id, 'status': {'state': 'working'}}})}\n\n"
-
-    async for chunk in runtime.invoke_stream(params["message"]):
-        yield f"data: {json.dumps({'jsonrpc': '2.0', 'result': {'id': task_id, 'artifact': {'parts': [{'type': 'text', 'text': chunk}]}}})}\n\n"
-
-    # Task completed
-    final = await runtime.get_result(task_id)
-    yield f"data: {json.dumps({'jsonrpc': '2.0', 'result': {'id': task_id, 'status': {'state': 'completed'}, 'artifacts': final.artifacts}})}\n\n"
+# Response: 201 Created
+{
+    "job_id": "job-abc123",
+    "status": "pending"
+}
 ```
 
-### 5.4 Session Isolation
+**GET /jobs/{job_id} - Poll Status:**
 
-Each feature gets isolated conversation contexts stored in **DynamoDB** (not files):
+```python
+class JobStatusResponse(BaseModel):
+    job_id: str
+    status: str                   # "pending", "working", "completed", "failed"
+    phase: str
+    outcome: str | None           # "pass", "reject", "waiting_for_ci" (when completed)
+    reject_reason: str | None     # Explanation if outcome is "reject"
+    error: str | None             # Error message if status is "failed"
+    started_at: datetime
+    completed_at: datetime | None
 
+# Example
+GET /jobs/job-abc123
+
+# Response: 200 OK
+{
+    "job_id": "job-abc123",
+    "status": "completed",
+    "phase": "specify",
+    "outcome": "pass",
+    "reject_reason": null,
+    "started_at": "2026-01-09T10:00:00Z",
+    "completed_at": "2026-01-09T10:05:00Z"
+}
 ```
-DynamoDB Table: farmercode
-───────────────────────────────────────────────────────────
-PK                    SK                        Data
-───────────────────────────────────────────────────────────
-issue#auth-123      conversation#baron#001    {messages: [...]}
-issue#auth-123      conversation#duc#002      {messages: [...]}
-issue#auth-123      conversation#marie#003    {messages: [...]}
-issue#payment-456   conversation#baron#001    {messages: [...]}
-```
 
-The Claude SDK adapter reads/writes conversation history to DynamoDB, keyed by issue ID
-and agent. This ensures:
-- Persistence across pod restarts
-- Queryable conversation history for training
-- No file system state to manage
+### 5.4 Agent Implementation
+
+```python
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+import uuid
+
+app = FastAPI()
+jobs: dict[str, Job] = {}  # In-memory for simplicity; real impl uses CRD
+
+@app.post("/jobs", status_code=201)
+async def create_job(request: CreateJobRequest) -> CreateJobResponse:
+    job_id = f"job-{uuid.uuid4().hex[:8]}"
+    job = Job(
+        job_id=job_id,
+        phase=request.phase,
+        issue_id=request.issue_id,
+        context=request.context,
+        status="pending"
+    )
+    jobs[job_id] = job
+
+    # Start async processing
+    asyncio.create_task(process_job(job))
+
+    return CreateJobResponse(job_id=job_id, status="pending")
+
+@app.get("/jobs/{job_id}")
+async def get_job_status(job_id: str) -> JobStatusResponse:
+    if job_id not in jobs:
+        raise HTTPException(status_code=404, detail="Job not found")
+    return jobs[job_id].to_response()
+
+async def process_job(job: Job):
+    """Execute the agent's work for this phase."""
+    job.status = "working"
+
+    try:
+        # Run agent logic (Claude SDK, file operations, etc.)
+        result = await run_agent_phase(job.phase, job.context)
+
+        # Commit results to Git journal
+        await commit_to_journal(job.issue_id, job.phase, result)
+
+        job.status = "completed"
+        job.outcome = result.outcome  # "pass" or "reject"
+        job.reject_reason = result.reject_reason
+
+    except Exception as e:
+        job.status = "failed"
+        job.error = str(e)
+```
 
 ### 5.5 Service Discovery
 
-A2A URLs vary based on namespace context (see Section 4.1 for namespace strategy):
+Within a Kubernetes namespace, services use simple names:
 
 | Context | URL Pattern | Example |
 |---------|-------------|---------|
-| **Within workflow namespace** | `http://{agent}:{port}` | `http://duc:8002/a2a` |
-| **Chat Portal → workflow** | Not applicable | Workflows isolated |
-| **Chat Portal internal** | `http://{agent}:{port}` | `http://baron:8002/a2a` |
-| **Cross-namespace (rare)** | `http://{agent}.{namespace}.svc:{port}` | `http://baron.ai-agents.svc:8002/a2a` |
+| **Within workflow namespace** | `http://{agent}:{port}` | `http://baron:8002/jobs` |
+| **Cross-namespace (rare)** | `http://{agent}.{namespace}.svc:{port}` | `http://baron.fc-issue-42.svc:8002/jobs` |
 
-**Why simple names work:**
-
-Within a Kubernetes namespace, services are discoverable by their short name. Since each
-workflow runs in its own namespace (`fc-{issue-id}`), agents call each other using simple
-names like `http://duc:8002`. This provides:
-
-1. **Automatic isolation** — calls stay within the workflow namespace
-2. **Simple configuration** — no namespace prefixes needed
-3. **Consistent addressing** — same code works in any workflow namespace
-
-**Agent Card URL:**
-
-The `url` field in agent cards uses simple names. The actual URL resolution happens at
-the Kubernetes DNS level based on which namespace the caller is in.
+**Agent Card (A2A Standard):**
 
 ```json
 {
   "name": "baron",
-  "url": "http://baron:8002"
+  "description": "PM Agent - Creates specifications, plans, and task lists",
+  "url": "http://baron:8002",
+  "version": "2.1.0",
+  "capabilities": {
+    "streaming": false,
+    "pushNotifications": false
+  },
+  "defaultInputModes": ["text"],
+  "defaultOutputModes": ["text"]
 }
 ```
+
+### 5.6 Why REST over JSON-RPC?
+
+| Factor | JSON-RPC | REST |
+|--------|----------|------|
+| **Simplicity** | Method names in body | HTTP verbs + URLs |
+| **Debugging** | Parse JSON body | `curl GET /jobs/123` |
+| **OpenAPI** | Custom tooling | Native support |
+| **Caching** | Manual | HTTP cache headers |
+| **Our use case** | Overkill | Perfect fit |
+
+We can add JSON-RPC or gRPC bindings later if needed for external agent integration.
 
 ---
 
