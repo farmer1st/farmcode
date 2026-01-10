@@ -316,7 +316,128 @@ service-name/
 | K8s base manifests | `infra/k8s/base/` | Gus |
 | K8s env overlays | `infra/k8s/overlays/{env}/` | Gus (via deploy PRs) |
 | Feature specs | `specs/` | Baron |
-| Documentation | `docs/` | Victor |
+| Documentation | Colocated + `docs/` | Victor |
+
+### 1.3 Documentation Structure (Colocated + Aggregated)
+
+Following the [Spotify monorepo documentation pattern](https://engineering.atspotify.com/2019/10/solving-documentation-for-monoliths-and-monorepos/),
+we use **colocated documentation** (docs near code) with a **centralized aggregation point**.
+
+**Why Colocated?**
+
+| Aspect | Benefit |
+|--------|---------|
+| Ownership | Docs live with code owners (matches CODEOWNERS) |
+| Discoverability | Devs find docs where they expect (`cd service && ls docs/`) |
+| Freshness | Docs updated alongside code changes in same PR |
+| CI integration | Each service can validate its own docs |
+
+**Documentation Locations:**
+
+```
+my-app/
+│
+├── docs/                               # Root: Cross-cutting, getting started
+│   ├── index.md                        # Links to subdocs
+│   ├── architecture/                   # System-wide design decisions
+│   ├── getting-started/                # Onboarding guides
+│   ├── adr/                            # Architecture Decision Records
+│   └── mkdocs.yml                      # Aggregates all subdocs
+│
+├── services/
+│   ├── [domain]/
+│   │   ├── docs/                       # Domain-level docs
+│   │   │   ├── index.md
+│   │   │   ├── api.md                  # API documentation
+│   │   │   ├── runbooks/               # Operational runbooks
+│   │   │   └── mkdocs.yml              # Optional: standalone build
+│   │   │
+│   │   ├── auth-service/
+│   │   │   └── docs/                   # Service-specific docs
+│   │   │       ├── index.md
+│   │   │       └── api.md
+│   │   └── ...
+│   │
+│   └── shared/
+│       └── docs/                       # Shared library docs
+│           ├── contracts.md
+│           └── clients.md
+│
+├── apps/
+│   └── portal/
+│       └── docs/                       # App-specific docs
+│           ├── components.md
+│           └── state-management.md
+│
+├── infra/
+│   ├── terraform/
+│   │   └── docs/                       # IaC documentation
+│   │       ├── modules.md
+│   │       └── environments.md
+│   │
+│   └── k8s/
+│       └── docs/                       # K8s manifests docs
+│           ├── overlays.md
+│           └── secrets.md
+│
+└── mkdocs.yml                          # Root aggregator
+```
+
+**Aggregation with MkDocs Monorepo Plugin:**
+
+The root `mkdocs.yml` uses [mkdocs-monorepo-plugin](https://github.com/backstage/mkdocs-monorepo-plugin)
+to build a unified documentation site from colocated sources:
+
+```yaml
+# mkdocs.yml (root)
+site_name: MyApp Documentation
+plugins:
+  - monorepo
+
+nav:
+  - Home: docs/index.md
+  - Getting Started: docs/getting-started/
+  - Architecture: docs/architecture/
+  - Services:
+    - User Management: '!include ./services/user-management/docs/mkdocs.yml'
+    - Payments: '!include ./services/payments/docs/mkdocs.yml'
+  - Apps:
+    - Portal: '!include ./apps/portal/docs/mkdocs.yml'
+  - Infrastructure:
+    - Terraform: '!include ./infra/terraform/docs/mkdocs.yml'
+    - Kubernetes: '!include ./infra/k8s/docs/mkdocs.yml'
+  - ADRs: docs/adr/
+```
+
+**Service-Level mkdocs.yml:**
+
+```yaml
+# services/user-management/docs/mkdocs.yml
+site_name: User Management
+docs_dir: .
+nav:
+  - Overview: index.md
+  - API Reference: api.md
+  - Runbooks: runbooks/
+```
+
+**Documentation Ownership:**
+
+| Location | Owner | Content |
+|----------|-------|---------|
+| `docs/` | Victor | Architecture, onboarding, cross-cutting |
+| `services/[domain]/docs/` | Domain team | Domain overview, shared patterns |
+| `services/[domain]/[service]/docs/` | Service owner | API docs, runbooks |
+| `apps/*/docs/` | Dali | UI components, state, routing |
+| `infra/terraform/docs/` | Gus | Module usage, environment setup |
+| `infra/k8s/docs/` | Gus | Manifest patterns, overlays |
+
+**Benefits:**
+
+1. **Single site** — `mkdocs build` produces unified docs at `site/`
+2. **Colocated authoring** — Teams edit docs in their own directories
+3. **Independent builds** — Each service can run `mkdocs serve` locally
+4. **CODEOWNERS alignment** — Docs PRs route to correct reviewers
 
 ---
 
